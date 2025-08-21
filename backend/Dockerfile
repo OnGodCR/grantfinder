@@ -3,20 +3,24 @@ FROM node:20-bullseye-slim AS builder
 
 WORKDIR /app
 
-# 1) Install deps INCLUDING devDependencies (needed for Prisma CLI)
+# Copy manifests + prisma first, so if postinstall runs it sees the schema
 COPY package*.json ./
+COPY prisma ./prisma
+
+# Install deps INCLUDING devDependencies (needed for Prisma CLI)
+# If you keep a postinstall, prisma generate will work now because prisma/ exists
 RUN npm install --include=dev
 
-# 2) Copy the rest (brings in prisma/schema.prisma and src/)
+# Copy the rest of the source
 COPY . .
 
-# 3) Generate Prisma client
+# Generate Prisma client explicitly (safe even if postinstall already ran)
 RUN npx prisma generate --schema=prisma/schema.prisma
 
-# 4) Build TypeScript
+# Build TypeScript
 RUN npm run build
 
-# 5) Prune dev deps to ship a lean runtime
+# Prune dev deps for runtime image
 RUN npm prune --production
 
 
@@ -25,7 +29,7 @@ FROM node:20-bullseye-slim
 
 WORKDIR /app
 
-# 6) Copy production node_modules and built app from builder
+# Copy production artifacts
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
