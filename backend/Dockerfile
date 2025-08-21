@@ -11,7 +11,6 @@ RUN npm install --include=dev
 COPY . .
 
 # 3) Generate Prisma client
-#    (schema path explicit for clarity)
 RUN npx prisma generate --schema=prisma/schema.prisma
 
 # 4) Build TypeScript
