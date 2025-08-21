@@ -1,16 +1,17 @@
 // Prisma schema for GrantFinder
 
 generator client {
-  provider      = "prisma-client-js"
-  // Ensure compatible engine binaries on Railway (Debian bullseye)
-  binaryTargets = ["debian-openssl-1.1.x", "native"]
+  provider       = "prisma-client-js"
+  binaryTargets  = ["debian-openssl-1.1.x", "native"]
+  previewFeatures = ["postgresqlExtensions"] // REQUIRED for extensions = [...]
 }
 
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
-  // REQUIRED for @db.Vector(dim) validation and use
-  extensions = [pgvector]
+
+  // Enable pgvector extension (version optional; adjust if Neon reports a different version)
+  extensions = [pgvector(version: "0.7.4")]
 }
 
 model Institution {
@@ -48,6 +49,7 @@ model User {
   notifications Notification[]
   matches       Match[]
   collections   SavedCollection[] @relation("CollectionOwner")
+  searchLogs    SearchLog[]       // ✅ back-relation added
 }
 
 model ResearcherProfile {
@@ -56,8 +58,10 @@ model ResearcherProfile {
   keywords      String[]
   researchAreas String[]
   pastFunding   String[]
-  /// pgvector column stored as Bytes with dimension 1536
+
+  /// pgvector column stored as Bytes with dimension 1536 (preview)
   embedding     Bytes?   @db.Vector(1536)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -87,7 +91,7 @@ model Grant {
   eligibility String?
   summary     String?
 
-  /// pgvector column stored as Bytes with dimension 1536
+  /// pgvector column stored as Bytes with dimension 1536 (preview)
   embedding   Bytes?   @db.Vector(1536)
 
   agencyId    String?
@@ -154,7 +158,7 @@ model SearchLog {
   createdAt     DateTime @default(now())
 
   institution   Institution @relation(fields: [institutionId], references: [id])
-  user          User        @relation(fields: [userId], references: [id])
+  user          User        @relation(fields: [userId], references: [id]) // ✅ matches User.searchLogs
 }
 
 model Match {
