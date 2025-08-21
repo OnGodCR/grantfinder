@@ -1,19 +1,25 @@
+# backend/Dockerfile
 FROM node:20-alpine
+
+# 1) Install system deps needed by Prisma on Alpine
+RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
-# Install deps
+# 2) Install Node deps first (cache-friendly)
 COPY package*.json ./
 RUN npm install
 
-# Copy the rest
+# 3) Copy the rest of your source (includes prisma/schema.prisma)
 COPY . .
 
-# Generate Prisma client (safe even if already generated)
-RUN npm run generate || npx prisma generate
+# 4) Generate Prisma client (now that schema exists + OS deps are present)
+RUN npx prisma generate
 
-# Build TypeScript
+# 5) Build TypeScript
 RUN npm run build
 
 EXPOSE 4000
+
+# 6) Start. (If you prefer, you can also run migrations here, but we do them in Railway Shell)
 CMD ["node", "dist/index.js"]
