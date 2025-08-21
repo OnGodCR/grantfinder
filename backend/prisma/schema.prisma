@@ -1,15 +1,9 @@
-// Prisma schema for GrantFinder
-
-generator client {
-  provider = "prisma-client-js"
-}
+generator client { provider = "prisma-client-js" }
 
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
-
-  // REQUIRED for @db.Vector(dim) to validate:
-  extensions = [pgvector]
+  extensions = [pgvector]  // REQUIRED
 }
 
 model Institution {
@@ -21,16 +15,12 @@ model Institution {
   stripeCustomerId     String?
   stripeSubscriptionId String?
   createdAt            DateTime @default(now())
-
   users        User[]
   collections  SavedCollection[]
   searchLogs   SearchLog[]
 }
 
-enum Role {
-  ADMIN
-  RESEARCHER
-}
+enum Role { ADMIN RESEARCHER }
 
 model User {
   id            String   @id @default(cuid())
@@ -40,7 +30,6 @@ model User {
   role          Role     @default(RESEARCHER)
   institutionId String
   createdAt     DateTime @default(now())
-
   institution   Institution   @relation(fields: [institutionId], references: [id])
   profile       ResearcherProfile?
   comments      Comment[]
@@ -55,11 +44,9 @@ model ResearcherProfile {
   keywords      String[]
   researchAreas String[]
   pastFunding   String[]
-  /// pgvector column stored as Bytes with dimension 1536
-  embedding     Bytes?   @db.Vector(1536)
+  embedding     Bytes?   @db.Vector(1536)  // pgvector
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
   user          User     @relation(fields: [userId], references: [id])
 }
 
@@ -85,18 +72,13 @@ model Grant {
   deadline    DateTime?
   eligibility String?
   summary     String?
-
-  /// pgvector column stored as Bytes with dimension 1536
-  embedding   Bytes?   @db.Vector(1536)
-
+  embedding   Bytes?   @db.Vector(1536)    // pgvector
   agencyId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
   agency      Agency?  @relation(fields: [agencyId], references: [id])
   items       CollectionItem[]
   matches     Match[]
-
   @@unique([source, sourceId], name: "source_sourceId")
 }
 
@@ -106,7 +88,6 @@ model SavedCollection {
   institutionId String
   createdById   String
   createdAt     DateTime @default(now())
-
   institution   Institution @relation(fields: [institutionId], references: [id])
   createdBy     User        @relation("CollectionOwner", fields: [createdById], references: [id])
   items         CollectionItem[]
@@ -118,7 +99,6 @@ model CollectionItem {
   collectionId String
   grantId      String
   note         String?
-
   collection   SavedCollection @relation(fields: [collectionId], references: [id])
   grant        Grant           @relation(fields: [grantId], references: [id])
 }
@@ -129,7 +109,6 @@ model Comment {
   userId       String
   text         String
   createdAt    DateTime @default(now())
-
   collection   SavedCollection @relation(fields: [collectionId], references: [id])
   user         User            @relation(fields: [userId], references: [id])
 }
@@ -141,7 +120,6 @@ model Notification {
   payload   Json
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
-
   user      User     @relation(fields: [userId], references: [id])
 }
 
@@ -151,7 +129,6 @@ model SearchLog {
   userId        String
   query         String
   createdAt     DateTime @default(now())
-
   institution   Institution @relation(fields: [institutionId], references: [id])
   user          User        @relation(fields: [userId], references: [id])
 }
@@ -162,7 +139,6 @@ model Match {
   grantId   String
   score     Float
   createdAt DateTime @default(now())
-
   user      User   @relation(fields: [userId], references: [id])
   grant     Grant  @relation(fields: [grantId], references: [id])
 }
