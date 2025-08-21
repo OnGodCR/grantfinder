@@ -1,25 +1,28 @@
 # backend/Dockerfile
-FROM node:20-alpine
+FROM node:20-bullseye-slim
 
-# 1) Install system deps needed by Prisma on Alpine
-RUN apk add --no-cache openssl libc6-compat
+# 1) System packages Prisma needs
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates curl \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# 2) Install Node deps first (cache-friendly)
+# 2) Install Node deps (include devDeps so prisma is available)
 COPY package*.json ./
 RUN npm install
 
-# 3) Copy the rest of your source (includes prisma/schema.prisma)
+# 3) Copy the rest (brings in prisma/schema.prisma)
 COPY . .
 
-# 4) Generate Prisma client (now that schema exists + OS deps are present)
-RUN npx prisma generate
+# 4) Generate Prisma client (now that schema exists + deps installed)
+#    (explicit schema path is just to be safe)
+RUN npx prisma generate --schema=prisma/schema.prisma
 
 # 5) Build TypeScript
 RUN npm run build
 
 EXPOSE 4000
 
-# 6) Start. (If you prefer, you can also run migrations here, but we do them in Railway Shell)
+# 6) Start
 CMD ["node", "dist/index.js"]
