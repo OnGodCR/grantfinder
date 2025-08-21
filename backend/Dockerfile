@@ -1,23 +1,19 @@
-# backend/Dockerfile
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies
+# Install deps
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
-# Copy the rest of the code
+# Copy the rest
 COPY . .
 
-# Generate Prisma client (safe without DB access)
+# Generate Prisma client (safe even if already generated)
 RUN npm run generate || npx prisma generate
 
 # Build TypeScript
 RUN npm run build
 
-# Expose app port
 EXPOSE 4000
-
-# Start the server
 CMD ["node", "dist/index.js"]
