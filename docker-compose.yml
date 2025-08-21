@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  db:
+    image: ankane/pgvector:latest
+    environment:
+      POSTGRES_USER: grantfinder
+      POSTGRES_PASSWORD: grantfinderpassword
+      POSTGRES_DB: grantfinder
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+volumes:
+  db_data:
