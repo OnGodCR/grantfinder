@@ -1,28 +1,36 @@
-# backend/Dockerfile
-FROM node:20-bullseye-slim
-
-# 1) System packages Prisma needs
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates curl \
-  && rm -rf /var/lib/apt/lists/*
+# ---------- BUILD STAGE ----------
+FROM node:20-bullseye-slim AS builder
 
 WORKDIR /app
 
-# 2) Install Node deps (include devDeps so prisma is available)
+# 1) Install deps INCLUDING devDependencies (needed for Prisma CLI)
 COPY package*.json ./
-RUN npm install
+RUN npm install --include=dev
 
-# 3) Copy the rest (brings in prisma/schema.prisma)
+# 2) Copy the rest (brings in prisma/schema.prisma and src/)
 COPY . .
 
-# 4) Generate Prisma client (now that schema exists + deps installed)
-#    (explicit schema path is just to be safe)
+# 3) Generate Prisma client
+#    (schema path explicit for clarity)
 RUN npx prisma generate --schema=prisma/schema.prisma
 
-# 5) Build TypeScript
+# 4) Build TypeScript
 RUN npm run build
 
-EXPOSE 4000
+# 5) Prune dev deps to ship a lean runtime
+RUN npm prune --production
 
-# 6) Start
+
+# ---------- RUNTIME STAGE ----------
+FROM node:20-bullseye-slim
+
+WORKDIR /app
+
+# 6) Copy production node_modules and built app from builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/package*.json ./
+
+EXPOSE 4000
 CMD ["node", "dist/index.js"]
