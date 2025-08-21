@@ -8,6 +8,7 @@ export async function embedText(text: string): Promise<number[]> {
     model: 'text-embedding-3-large',
     input: text.slice(0, 8000)
   });
+  // Return plain number[] (we store arrays directly in Postgres)
   return res.data[0].embedding as unknown as number[];
 }
 
@@ -42,9 +43,17 @@ ELIGIBILITY: ${fields.eligibility || 'N/A'}`;
   }
 }
 
+// Simple cosine similarity in app (used for ranking search results)
 export function cosineSimilarity(a: number[], b: number[]): number {
-  const dot = a.reduce((sum, v, i) => sum + v * (b[i] || 0), 0);
-  const normA = Math.sqrt(a.reduce((sum, v) => sum + v*v, 0));
-  const normB = Math.sqrt(b.reduce((sum, v) => sum + v*v, 0));
-  return normA && normB ? dot / (normA * normB) : 0;
+  const len = Math.min(a.length, b.length);
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < len; i++) {
+    const x = a[i] || 0;
+    const y = b[i] || 0;
+    dot += x * y;
+    na += x * x;
+    nb += y * y;
+  }
+  const denom = Math.sqrt(na) * Math.sqrt(nb);
+  return denom ? dot / denom : 0;
 }
