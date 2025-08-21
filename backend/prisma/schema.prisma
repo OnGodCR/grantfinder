@@ -1,17 +1,13 @@
-// Prisma schema for GrantFinder
+// Prisma schema for GrantFinder — array-based embeddings (no pgvector)
 
 generator client {
-  provider       = "prisma-client-js"
-  binaryTargets  = ["debian-openssl-1.1.x", "native"]
-  previewFeatures = ["postgresqlExtensions"] // REQUIRED for extensions = [...]
+  provider      = "prisma-client-js"
+  binaryTargets = ["debian-openssl-1.1.x", "native"]
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-
-  // Enable pgvector extension (version optional; adjust if Neon reports a different version)
-  extensions = [pgvector(version: "0.7.4")]
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Institution {
@@ -49,7 +45,7 @@ model User {
   notifications Notification[]
   matches       Match[]
   collections   SavedCollection[] @relation("CollectionOwner")
-  searchLogs    SearchLog[]       // ✅ back-relation added
+  searchLogs    SearchLog[]
 }
 
 model ResearcherProfile {
@@ -59,8 +55,8 @@ model ResearcherProfile {
   researchAreas String[]
   pastFunding   String[]
 
-  /// pgvector column stored as Bytes with dimension 1536 (preview)
-  embedding     Bytes?   @db.Vector(1536)
+  // Array-based embedding instead of pgvector
+  embedding     Float[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -91,8 +87,8 @@ model Grant {
   eligibility String?
   summary     String?
 
-  /// pgvector column stored as Bytes with dimension 1536 (preview)
-  embedding   Bytes?   @db.Vector(1536)
+  // Array-based embedding instead of pgvector
+  embedding   Float[]
 
   agencyId    String?
   createdAt   DateTime @default(now())
@@ -152,22 +148,4 @@ model Notification {
 
 model SearchLog {
   id            String   @id @default(cuid())
-  institutionId String
-  userId        String
-  query         String
-  createdAt     DateTime @default(now())
-
-  institution   Institution @relation(fields: [institutionId], references: [id])
-  user          User        @relation(fields: [userId], references: [id]) // ✅ matches User.searchLogs
-}
-
-model Match {
-  id        String   @id @default(cuid())
-  userId    String
-  grantId   String
-  score     Float
-  createdAt DateTime @default(now())
-
-  user      User   @relation(fields: [userId], references: [id])
-  grant     Grant  @relation(fields: [grantId], references: [id])
-}
+  institutionId Strin
