@@ -1,4 +1,5 @@
 // Prisma schema for GrantFinder
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,14 +10,14 @@ datasource db {
 }
 
 model Institution {
-  id                 String   @id @default(cuid())
-  name               String
-  domain             String?
-  plan               String   @default("starter")
-  seats              Int      @default(10)
-  stripeCustomerId   String?
+  id                   String   @id @default(cuid())
+  name                 String
+  domain               String?
+  plan                 String   @default("starter")
+  seats                Int      @default(10)
+  stripeCustomerId     String?
   stripeSubscriptionId String?
-  createdAt          DateTime @default(now())
+  createdAt            DateTime @default(now())
 
   users        User[]
   collections  SavedCollection[]
@@ -37,7 +38,7 @@ model User {
   institutionId String
   createdAt     DateTime @default(now())
 
-  institution   Institution @relation(fields: [institutionId], references: [id])
+  institution   Institution   @relation(fields: [institutionId], references: [id])
   profile       ResearcherProfile?
   comments      Comment[]
   notifications Notification[]
@@ -51,8 +52,8 @@ model ResearcherProfile {
   keywords      String[]
   researchAreas String[]
   pastFunding   String[]
-  // pgvector type
-  embedding     Vector?
+  /// pgvector column stored as Bytes with dimension 1536
+  embedding     Bytes?   @db.Vector(1536)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -60,70 +61,74 @@ model ResearcherProfile {
 }
 
 model Agency {
-  id        String   @id @default(cuid())
-  name      String
-  country   String?
-  url       String?
-  grants    Grant[]
+  id      String  @id @default(cuid())
+  name    String  @unique
+  country String?
+  url     String?
+  grants  Grant[]
 }
 
 model Grant {
-  id             String   @id @default(cuid())
-  source         String
-  sourceId       String?
-  url            String?
-  title          String
-  description    String
-  purpose        String?
-  currency       String?  @default("USD")
-  fundingMin     Float?
-  fundingMax     Float?
-  deadline       DateTime?
-  eligibility    String?
-  summary        String?
-  // pgvector type
-  embedding      Vector?
-  agencyId       String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id          String   @id @default(cuid())
+  source      String
+  sourceId    String?
+  url         String?
+  title       String
+  description String
+  purpose     String?
+  currency    String?  @default("USD")
+  fundingMin  Float?
+  fundingMax  Float?
+  deadline    DateTime?
+  eligibility String?
+  summary     String?
 
-  agency         Agency?  @relation(fields: [agencyId], references: [id])
-  items          CollectionItem[]
-  matches        Match[]
+  /// pgvector column stored as Bytes with dimension 1536
+  embedding   Bytes?   @db.Vector(1536)
+
+  agencyId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  agency      Agency?  @relation(fields: [agencyId], references: [id])
+  items       CollectionItem[]
+  matches     Match[]
+
+  @@unique([source, sourceId], name: "source_sourceId")
 }
 
 model SavedCollection {
-  id             String   @id @default(cuid())
-  name           String
-  institutionId  String
-  createdById    String
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  name          String
+  institutionId String
+  createdById   String
+  createdAt     DateTime @default(now())
 
-  institution    Institution @relation(fields: [institutionId], references: [id])
-  createdBy      User        @relation("CollectionOwner", fields: [createdById], references: [id])
-  items          CollectionItem[]
-  comments       Comment[]
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  createdBy     User        @relation("CollectionOwner", fields: [createdById], references: [id])
+  items         CollectionItem[]
+  comments      Comment[]
 }
 
 model CollectionItem {
-  id            String   @id @default(cuid())
-  collectionId  String
-  grantId       String
-  note          String?
+  id           String  @id @default(cuid())
+  collectionId String
+  grantId      String
+  note         String?
 
-  collection    SavedCollection @relation(fields: [collectionId], references: [id])
-  grant         Grant           @relation(fields: [grantId], references: [id])
+  collection   SavedCollection @relation(fields: [collectionId], references: [id])
+  grant        Grant           @relation(fields: [grantId], references: [id])
 }
 
 model Comment {
-  id            String   @id @default(cuid())
-  collectionId  String
-  userId        String
-  text          String
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  collectionId String
+  userId       String
+  text         String
+  createdAt    DateTime @default(now())
 
-  collection    SavedCollection @relation(fields: [collectionId], references: [id])
-  user          User            @relation(fields: [userId], references: [id])
+  collection   SavedCollection @relation(fields: [collectionId], references: [id])
+  user         User            @relation(fields: [userId], references: [id])
 }
 
 model Notification {
@@ -158,6 +163,3 @@ model Match {
   user      User   @relation(fields: [userId], references: [id])
   grant     Grant  @relation(fields: [grantId], references: [id])
 }
-
-// Enable pgvector type
-type Vector @db.Vector(1536)
