@@ -1,43 +1,29 @@
-import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
-import { embedText } from "../ai";
+import { Router, Response } from "express";
+import { prisma } from "../prisma.js";
+import { requireAuth, AuthRequest } from "../middleware/auth.js";
+import { embedText } from "../ai.js";
 
-const prisma = new PrismaClient();
-const router = Router();
+const r = Router();
 
-/**
- * Create or update researcher profile
- */
-router.post("/", async (req, res) => {
-  const { userId, keywords, researchAreas, pastFunding } = req.body;
-
-  try {
-    const emb = await embedText(
-      [...(keywords || []), ...(researchAreas || []), ...(pastFunding || [])].join(" ")
-    );
-
-    const profile = await prisma.researcherProfile.upsert({
-      where: { userId },
-      create: {
-        userId,
-        keywords,
-        researchAreas,
-        pastFunding,
-        embedding: emb, // store array
-      },
-      update: {
-        keywords,
-        researchAreas,
-        pastFunding,
-        embedding: emb, // update array
-      },
-    });
-
-    res.json(profile);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to save profile" });
-  }
+r.get("/me/profile", requireAuth, async (req: AuthRequest, res: Response) => {
+  const profile = await prisma.researcherProfile.findUnique({
+    where: { userId: req.auth!.userId }
+  });
+  res.json(profile || {});
 });
 
-export default router;
+r.post("/me/profile", requireAuth, async (req: AuthRequest, res: Response) => {
+  const { keywords = [], researchAreas = [], pastFunding = [] } = req.body || {};
+  const text = [...keywords, ...researchAreas, ...pastFunding].join(" ").trim() || "researcher";
+  const embedding = await embedText(text);
+
+  const profile = await prisma.researcherProfile.upsert({
+    where: { userId: req.auth!.userId },
+    update: { keywords, researchAreas, pastFunding, embedding },
+    create: { userId: req.auth!.userId, keywords, researchAreas, pastFunding, embedding }
+  });
+
+  res.json(profile);
+});
+
+export default r;
