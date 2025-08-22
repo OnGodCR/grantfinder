@@ -55,7 +55,7 @@ model ResearcherProfile {
   researchAreas String[]
   pastFunding   String[]
 
-  // Array-based embedding instead of pgvector
+  // Array-based embedding
   embedding     Float[]
 
   createdAt     DateTime @default(now())
@@ -87,7 +87,7 @@ model Grant {
   eligibility String?
   summary     String?
 
-  // Array-based embedding instead of pgvector
+  // Array-based embedding
   embedding   Float[]
 
   agencyId    String?
@@ -148,4 +148,22 @@ model Notification {
 
 model SearchLog {
   id            String   @id @default(cuid())
-  institutionId Strin
+  institutionId String
+  userId        String
+  query         String
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
+}
+
+model Match {
+  id        String   @id @default(cuid())
+  userId    String
+  grantId   String
+  score     Float
+  createdAt DateTime @default(now())
+
+  user      User   @relation(fields: [userId], references: [id])
+  grant     Grant  @relation(fields: [grantId], references: [id])
+}
