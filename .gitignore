@@ -1,0 +1,19 @@
+# Node artifacts
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+package-lock.json
+
+# OS
+.DS_Store
+
+# Build outputs
+.next/
+dist/
+out/
+
+# Env files (never commit secrets)
+.env
+.env.*
