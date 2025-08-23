@@ -1,4 +1,3 @@
-cat > backend/prisma/schema.prisma <<'EOF'
 // Prisma schema for GrantFinder — array-based embeddings (no pgvector)
 
 generator client {
@@ -164,4 +163,3 @@ model Match {
   user      User   @relation(fields: [userId], references: [id])
   grant     Grant  @relation(fields: [grantId], references: [id])
 }
-EOF
