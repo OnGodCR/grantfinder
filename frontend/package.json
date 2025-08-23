@@ -11,11 +11,18 @@
   "dependencies": {
     "next": "14.2.5",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+
+    "@clerk/nextjs": "6.7.6",
+    "axios": "1.7.7"
   },
   "devDependencies": {
     "eslint": "8.57.0",
-    "eslint-config-next": "14.2.5"
+    "eslint-config-next": "14.2.5",
+
+    "typescript": "5.6.2",
+    "@types/node": "20.14.12",
+    "@types/react": "18.3.6"
   },
   "engines": {
     "node": ">=18.17.0"
