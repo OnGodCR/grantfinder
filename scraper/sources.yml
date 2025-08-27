@@ -1,10 +1,11 @@
-# Simple RSS-based sources. Add more feeds as needed.
-sources:
-  - name: "NSF Funding (example RSS)"
-    source_id_prefix: "nsf:"
-    rss: "https://www.nsf.gov/rss/rss_www_funding.xml"
-    agency: "National Science Foundation"
-  - name: "NIH Funding Opportunities (example RSS)"
-    source_id_prefix: "nih:"
-    rss: "https://grants.nih.gov/grants/guide/rss/nih-guide.xml"
-    agency: "National Institutes of Health"
+# Add/remove feeds anytime. source must be unique per feed.
+feeds:
+  - source: "nsf"
+    url: "https://www.nsf.gov/rss/rss_www_funding.xml"
+    category: "NSF Funding"
+  - source: "nih"
+    url: "https://grants.nih.gov/grants/guide/WeeklyIndex.cfm?RSSFeed=FundingOpportunities"
+    category: "NIH Funding"
+# Optional: fallback defaults if feed doesn’t provide them
+defaults:
+  currency: "USD"
