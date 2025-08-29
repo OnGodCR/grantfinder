@@ -2,9 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Optional global styles */
-:root {
-  color-scheme: light dark;
-}
-html, body { height: 100%; }
-body { margin: 0; }
+:root { --bg: #0C2340; }
+html, body { background: var(--bg); color: #EAF0FF; }
+
+a { text-decoration: none; }
