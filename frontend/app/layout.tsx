@@ -3,8 +3,23 @@ import { ClerkProvider } from '@clerk/nextjs'
 import Navbar from '@/components/Navbar'
 
 export const metadata = {
-  title: 'Fundora AI',
+export const metadata = {
+  title: 'Grantlytic',
   description: 'AI-Powered Grant Discovery for Universities',
+  openGraph: {
+    title: 'Grantlytic',
+    description: 'AI-Powered Grant Discovery for Universities',
+    url: 'grantlytic.com',   // update after you set the domain
+    siteName: 'Grantlytic',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Grantlytic',
+    description: 'AI-Powered Grant Discovery for Universities',
+  },
+};
+
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
