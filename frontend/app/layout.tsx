@@ -31,7 +31,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main>{children}</main>
           <footer className="mt-20 border-t border-white/10">
             <div className="mx-auto max-w-6xl px-4 py-10 text-body">
-              © {new Date().getFullYear()} Fundora AI
+            © {new Date().getFullYear()} Grantlytic
+
+
             </div>
           </footer>
         </body>
