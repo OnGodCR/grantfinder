@@ -1,6 +1,6 @@
-export const metadata = { title: 'About Us – Fundora AI' }
+export const metadata = { title: 'About Us – Fundora AI' };
 
-export default function About() {
+export default function AboutPage() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-16">
       <h1 className="text-4xl font-bold">About Us</h1>
@@ -9,5 +9,5 @@ export default function About() {
         We combine high-quality data with practical workflows your faculty will actually use.
       </p>
     </section>
-  )
+  );
 }
