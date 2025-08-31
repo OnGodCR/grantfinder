@@ -3,7 +3,7 @@ export const metadata = {
   description:
     'Our mission, story, problem, solution, values, and vision—how Grantlytics AI helps universities unlock more research funding with less effort.',
 };
-
+ 
 const BRAND = 'Grantlytics AI';
 
 export default function AboutPage() {
