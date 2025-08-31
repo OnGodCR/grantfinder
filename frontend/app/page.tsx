@@ -35,8 +35,9 @@ export default function Home() {
               See How It Works
             </a>
           </div>
+          {/* UPDATED BRAND NAME HERE */}
           <p className="mt-10 text-sm text-body/80">
-            Fundora AI aggregates funding opportunities from trusted sources (NSF, NIH, Horizon, and more).
+            Grantlytic aggregates funding opportunities from trusted sources (NSF, NIH, Horizon, and more).
           </p>
         </div>
 
