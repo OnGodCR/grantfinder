@@ -8,7 +8,7 @@ export const metadata = {
   openGraph: {
     title: 'Grantlytic',
     description: 'AI-Powered Grant Discovery for Universities',
-    url: 'https://grantlytic.vercel.app', // update if you have a custom domain
+    url: 'https://grantlytic.vercel.app', // update if you use a custom domain
     siteName: 'Grantlytic',
     type: 'website',
   },
