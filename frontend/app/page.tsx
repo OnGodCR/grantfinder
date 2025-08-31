@@ -37,7 +37,7 @@ export default function Home() {
           </div>
           {/* UPDATED BRAND NAME HERE */}
           <p className="mt-10 text-sm text-body/80">
-            Grantlytic aggregates funding opportunities from trusted sources (NSF, NIH, Horizon, and more).
+            Grantlytic AI aggregates funding opportunities from trusted sources (NSF, NIH, Horizon, and more).
           </p>
         </div>
 
