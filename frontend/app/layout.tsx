@@ -6,16 +6,15 @@ export const metadata = {
   title: 'Grantlytic',
   description: 'AI-Powered Grant Discovery for Universities',
   openGraph: {
-    title: 'Grantlytic AI',
+    title: 'Grantlytic',
     description: 'AI-Powered Grant Discovery for Universities',
-    // Update this to your live domain once set:
-    url: 'https://grantlytic.vercel.app',
-    siteName: 'Grantlytic AI',
+    url: 'https://grantlytic.vercel.app', // update if you have a custom domain
+    siteName: 'Grantlytic',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Grantlytic AI',
+    title: 'Grantlytic',
     description: 'AI-Powered Grant Discovery for Universities',
   },
 }
@@ -29,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main>{children}</main>
           <footer className="mt-20 border-t border-white/10">
             <div className="mx-auto max-w-6xl px-4 py-10 text-body">
-              © {new Date().getFullYear()} Grantlytic AI
+              © {new Date().getFullYear()} Grantlytic
             </div>
           </footer>
         </body>
