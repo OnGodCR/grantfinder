@@ -2,23 +2,6 @@ import './globals.css'
 import { ClerkProvider } from '@clerk/nextjs'
 import Navbar from '@/components/Navbar'
 
-export const metadata = {
-  title: 'Grantlytic',
-  description: 'AI-Powered Grant Discovery for Universities',
-  openGraph: {
-    title: 'Grantlytic',
-    description: 'AI-Powered Grant Discovery for Universities',
-    url: 'https://grantlytic.vercel.app', // set your custom domain if you have one
-    siteName: 'Grantlytic',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Grantlytic',
-    description: 'AI-Powered Grant Discovery for Universities',
-  },
-}
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
