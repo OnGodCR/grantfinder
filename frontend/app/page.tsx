@@ -1,4 +1,4 @@
-import GrantCard from '/components/GrantCard'
+import GrantCard from '@/components/GrantCard'
 
 const grants = [
   { title: 'Climate Change Research Initiative',
