@@ -1,4 +1,4 @@
-    # GrantFinder — AI-Powered Research Grant Database (Scaffold)
+     # GrantFinder — AI-Powered Research Grant Database (Scaffold)
 
 This repository is a production-grade **starter** for a B2B SaaS that helps universities discover and manage research grants. It contains:
 - **frontend/** (Next.js + Tailwind + Clerk + Stripe checkout client)
