@@ -1,34 +1,29 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
 import Link from 'next/link'
-import { useAuth, useUser } from '@clerk/nextjs'
-import { useRouter } from 'next/navigation'
+import { useAuth } from '@clerk/nextjs'
+import SidebarShell from '@/components/SidebarShell'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000/api'
 
-export default function Dashboard() {
-  const router = useRouter()
+type Grant = {
+  id: string
+  title: string
+  summary: string
+  deadline?: string
+  match?: number
+  url?: string
+}
+
+export default function DiscoverPage() {
   const { getToken } = useAuth()
-  const { isLoaded, isSignedIn, user } = useUser()
-
-  // Normalize flags/objects so we never render "unknown" in JSX
-  const hasOnboarded = useMemo<boolean>(() => {
-    const v = (user?.unsafeMetadata as any)?.hasOnboarded
-    return Boolean(v)
-  }, [user])
-
-  // Safe read of profile (Clerk types this as unknown)
-  const profile = useMemo(() => {
-    const raw = (user?.unsafeMetadata as any)?.profile
-    return raw && typeof raw === 'object' ? (raw as any) : undefined
-  }, [user])
-
   const [q, setQ] = useState('')
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<Grant[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState<Record<string, boolean>>({})
 
   async function search(query = q) {
     setLoading(true)
@@ -47,51 +42,24 @@ export default function Dashboard() {
     }
   }
 
-  // Client-side guard for auth + onboarding
   useEffect(() => {
-    if (!isLoaded) return
-    if (!isSignedIn) {
-      router.replace('/sign-in')
-      return
-    }
-    if (!hasOnboarded) {
-      router.replace('/onboarding')
-      return
-    }
-    // Initial search once allowed on page
+    // initial load
     search('')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn, hasOnboarded])
+  }, [])
 
-  // Lightweight placeholder while auth resolves / redirects
-  if (!isLoaded || !isSignedIn || !hasOnboarded) {
-    return (
-      <main className="max-w-5xl mx-auto mt-10">
-        <div className="card">Loading…</div>
-      </main>
-    )
+  function toggleSave(id: string) {
+    setSaved((s) => ({ ...s, [id]: !s[id] }))
+    // TODO: POST to backend to persist bookmark
   }
 
-  // Friendly hint built from profile (pure strings, never unknown in JSX)
-  const areas =
-    Array.isArray(profile?.researchAreas) && profile.researchAreas.length
-      ? profile.researchAreas.join(', ')
-      : 'your research profile'
-
   return (
-    <main className="max-w-5xl mx-auto mt-10">
-      <div className="card mb-6">
-        <h2 className="text-2xl font-semibold mb-2">Find Grants</h2>
-
-        {profile ? (
-          <p className="text-sm opacity-70 mb-3">
-            Tailoring results for <span className="font-medium">{areas}</span>.
-          </p>
-        ) : null}
-
-        <div className="flex gap-2">
+    <SidebarShell>
+      <header className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold">Discover New Grants</h1>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <input
-            className="input"
+            className="input min-w-[260px] flex-1"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && search()}
@@ -100,40 +68,44 @@ export default function Dashboard() {
           <button className="btn" onClick={() => search()}>
             {loading ? 'Searching…' : 'Search'}
           </button>
+          <button
+            className="rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/5"
+            onClick={() => alert('Filters coming soon')}
+          >
+            Filter
+          </button>
         </div>
-
         {error && <p className="mt-3 text-red-400 text-sm">{error}</p>}
-      </div>
+      </header>
 
-      <div className="grid gap-4">
+      <section className="grid gap-4">
         {items.map((g) => (
           <div key={g.id} className="card">
-            <div className="flex justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:justify-between">
               <div>
-                <h3 className="text-xl font-semibold">{g.title}</h3>
-                <p className="opacity-80">{g.summary}</p>
-                <div className="text-sm opacity-70 mt-2">
-                  {g.deadline ? (
-                    <span>Deadline: {new Date(g.deadline).toLocaleDateString()}</span>
-                  ) : (
-                    <span>No deadline listed</span>
+                <h3 className="text-lg md:text-xl font-semibold">{g.title}</h3>
+                <div className="mt-1 text-sm opacity-70">
+                  {typeof g.match === 'number' && <span>Match: {g.match}%</span>}
+                  {g.deadline && (
+                    <span className={g.match != null ? 'ml-3' : ''}>
+                      Deadline: {new Date(g.deadline).toLocaleDateString()}
+                    </span>
                   )}
-                  {typeof g.match === 'number' ? (
-                    <span className="ml-3">Match: {g.match}%</span>
-                  ) : null}
                 </div>
+                <p className="mt-2 opacity-80">{g.summary}</p>
               </div>
-              <div className="flex flex-col gap-2 items-end">
-                <a
-                  className="btn"
-                  target="_blank"
-                  href={g.url || '#'}
-                  rel="noreferrer"
+              <div className="flex gap-2 md:self-start">
+                <button
+                  className={['btn', saved[g.id] ? 'opacity-70' : ''].join(' ')}
+                  onClick={() => toggleSave(g.id)}
                 >
-                  View Source
+                  {saved[g.id] ? 'Saved' : 'Save'}
+                </button>
+                <a className="btn" target="_blank" href={g.url || '#'} rel="noreferrer">
+                  View Details
                 </a>
                 <Link className="btn" href={`/grants/${g.id}`}>
-                  Details
+                  More
                 </Link>
               </div>
             </div>
@@ -141,9 +113,11 @@ export default function Dashboard() {
         ))}
 
         {!loading && !error && items.length === 0 && (
-          <div className="card opacity-80">No results yet — try a search.</div>
+          <div className="card opacity-80">
+            No matches yet. Try searching for a topic like “climate modeling” or “AI in healthcare”.
+          </div>
         )}
-      </div>
-    </main>
+      </section>
+    </SidebarShell>
   )
 }
