@@ -62,7 +62,7 @@ export default function Home() {
       <section className="mx-auto max-w-6xl px-4 pb-4">
         <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-center ring-1 ring-white/10">
           <p className="text-body">
-            We are currently looking to Pilot our services at Universities! Think you'd be a good fit?
+            👉 Stop missing opportunities. Start winning more grants.
           </p>
           <div className="mt-3">
             <a
@@ -144,7 +144,7 @@ export default function Home() {
       </section>
 
       {/* The Why */}
-      <section className="mx-auto max-w-6xl px-4 pt-8 pb-20">
+      <section className="mx-auto max-w-6xl px-4 pt-8 pb-28 md:pb-32">
         <SectionHeader eyebrow="The Why" title="Why we built Grantalytic" />
 
         <div className="grid gap-6 md:grid-cols-[280px_1fr] items-start">
@@ -170,8 +170,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="mx-auto max-w-6xl px-4 pb-24">
+      {/* subtle divider between sections */}
+      <div className="mx-auto max-w-6xl px-4">
+        <div className="my-10 md:my-14 h-px w-full rounded-full bg-white/10"></div>
+      </div>
+
+      {/* Final CTA (now with added top margin) */}
+      <section className="mx-auto max-w-6xl px-4 mt-12 md:mt-16 pb-24">
         <div className="flex flex-col items-center justify-between gap-4 rounded-3xl border border-mint/40 bg-white/5 p-6 md:flex-row">
           <div>
             <h3 className="text-xl font-semibold text-text">Ready to unlock more funding for your institution?</h3>
