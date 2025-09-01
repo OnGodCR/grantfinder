@@ -1,123 +1,137 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import axios from 'axios'
 import Link from 'next/link'
-import { useAuth } from '@clerk/nextjs'
-import SidebarShell from '@/components/SidebarShell'
+import axios from 'axios'
+import { useAuth, useUser } from '@clerk/nextjs'
+import AppShell from '@/components/AppShell'
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000/api'
+const API =
+  process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000/api'
 
-type Grant = {
+type GrantItem = {
   id: string
   title: string
-  summary: string
+  summary?: string
   deadline?: string
   match?: number
   url?: string
 }
 
-export default function DiscoverPage() {
-  const { getToken } = useAuth()
+export default function Dashboard() {
   const [q, setQ] = useState('')
-  const [items, setItems] = useState<Grant[]>([])
+  const [items, setItems] = useState<GrantItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState<Record<string, boolean>>({})
+  const { getToken } = useAuth()
+  const { user } = useUser()
 
-  async function search(query = q) {
+  async function search() {
     setLoading(true)
-    setError(null)
     try {
       const token = await getToken()
       const res = await axios.get(`${API}/grants`, {
-        params: { q: query },
+        params: { q },
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
-      setItems(res.data?.items ?? [])
-    } catch {
-      setError('Unable to load grants. Please try again.')
+      setItems(Array.isArray(res.data?.items) ? res.data.items : [])
+    } catch (e) {
+      console.error(e)
+      setItems([])
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    // initial load
-    search('')
+    search()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function toggleSave(id: string) {
-    setSaved((s) => ({ ...s, [id]: !s[id] }))
-    // TODO: POST to backend to persist bookmark
-  }
-
   return (
-    <SidebarShell>
-      <header className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold">Discover New Grants</h1>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+    <AppShell>
+      <div className="mx-auto max-w-5xl">
+        <header className="mb-6">
+          <h1 className="text-2xl font-semibold">Discover New Grants</h1>
+
+          {/* Optional hint based on profile keywords if present */}
+          {user?.unsafeMetadata?.profile ? (
+            <p className="mt-1 text-sm opacity-70">
+              Tailoring results for{' '}
+              <span className="font-medium">
+                {(user.unsafeMetadata as any).profile.keywords ?? 'your profile'}
+              </span>
+              .
+            </p>
+          ) : null}
+        </header>
+
+        {/* Search + Filter row */}
+        <div className="mb-6 flex gap-2">
           <input
-            className="input min-w-[260px] flex-1"
+            className="input flex-1"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && search()}
-            placeholder="Search by keywords or paste a research question..."
+            placeholder="Search by keywords or paste a research question…"
           />
-          <button className="btn" onClick={() => search()}>
+          <button className="btn" onClick={search} disabled={loading}>
             {loading ? 'Searching…' : 'Search'}
           </button>
-          <button
-            className="rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/5"
-            onClick={() => alert('Filters coming soon')}
-          >
+          <button className="btn border border-white/20 bg-transparent">
             Filter
           </button>
         </div>
-        {error && <p className="mt-3 text-red-400 text-sm">{error}</p>}
-      </header>
 
-      <section className="grid gap-4">
-        {items.map((g) => (
-          <div key={g.id} className="card">
-            <div className="flex flex-col gap-3 md:flex-row md:justify-between">
-              <div>
-                <h3 className="text-lg md:text-xl font-semibold">{g.title}</h3>
-                <div className="mt-1 text-sm opacity-70">
-                  {typeof g.match === 'number' && <span>Match: {g.match}%</span>}
-                  {g.deadline && (
-                    <span className={g.match != null ? 'ml-3' : ''}>
-                      Deadline: {new Date(g.deadline).toLocaleDateString()}
-                    </span>
-                  )}
+        {/* Results */}
+        <div className="grid gap-4">
+          {items.map((g) => (
+            <div key={g.id} className="card">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">{g.title}</h3>
+                  {g.summary ? (
+                    <p className="mt-1 opacity-80">{g.summary}</p>
+                  ) : null}
+                  <div className="mt-2 text-sm opacity-70">
+                    {g.deadline ? (
+                      <span>
+                        Deadline:{' '}
+                        {new Date(g.deadline).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      <span>No deadline listed</span>
+                    )}
+                    {typeof g.match === 'number' ? (
+                      <span className="ml-3">Match: {g.match}%</span>
+                    ) : null}
+                  </div>
                 </div>
-                <p className="mt-2 opacity-80">{g.summary}</p>
-              </div>
-              <div className="flex gap-2 md:self-start">
-                <button
-                  className={['btn', saved[g.id] ? 'opacity-70' : ''].join(' ')}
-                  onClick={() => toggleSave(g.id)}
-                >
-                  {saved[g.id] ? 'Saved' : 'Save'}
-                </button>
-                <a className="btn" target="_blank" href={g.url || '#'} rel="noreferrer">
-                  View Details
-                </a>
-                <Link className="btn" href={`/grants/${g.id}`}>
-                  More
-                </Link>
+
+                <div className="flex gap-2 md:ml-4">
+                  {/* Save is a placeholder for now */}
+                  <button className="btn border border-white/20 bg-transparent">
+                    Save
+                  </button>
+                  <a
+                    className="btn"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href={g.url || '#'}
+                  >
+                    View Source
+                  </a>
+                  <Link className="btn" href={`/grants/${g.id}`}>
+                    View Details
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {!loading && !error && items.length === 0 && (
-          <div className="card opacity-80">
-            No matches yet. Try searching for a topic like “climate modeling” or “AI in healthcare”.
-          </div>
-        )}
-      </section>
-    </SidebarShell>
+          {!loading && items.length === 0 ? (
+            <p className="opacity-70">No results yet. Try a search above.</p>
+          ) : null}
+        </div>
+      </div>
+    </AppShell>
   )
 }
