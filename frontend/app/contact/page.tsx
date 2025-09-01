@@ -1,4 +1,4 @@
-import ContactForm from '@/components/ContactForm' // if this alias fails, use: ../../components/ContactForm
+import ContactForm from '@/components/ContactForm' // if this fails, use: ../../components/ContactForm
 
 export const metadata = {
   title: 'Contact Us – Grantlytics AI',
