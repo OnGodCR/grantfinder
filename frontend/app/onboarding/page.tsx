@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from '@clerk/nextjs'
 
@@ -46,8 +46,8 @@ type ProfileData = {
   department?: string
   role?: Role
 
-  researchAreas?: string[]           // free text (chips)
-  keywords?: string[]                // from taxonomy
+  researchAreas?: string[]
+  keywords?: string[]
   fundingCategories?: FundingCategory[]
 
   preferredSources?: PrefSource[]
@@ -144,7 +144,7 @@ function Wizard() {
         },
       })
 
-      // Optional webhook to your backend for vector creation
+      // Optional: ping your backend for vector creation
       const url = process.env.NEXT_PUBLIC_PROFILE_WEBHOOK_URL || process.env.PROFILE_WEBHOOK_URL
       if (url) {
         fetch(url, {
@@ -403,7 +403,7 @@ function SectionThree({
             />
           ))}
         </div>
-      </div }
+      </div>
 
       <div>
         <label className="mb-2 block text-sm font-medium">Deadline sensitivity</label>
