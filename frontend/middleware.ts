@@ -1,34 +1,45 @@
+// frontend/middleware.ts
 import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
-/** Protect dashboard (and anything under it). Add more paths if needed. */
+// Only gate /dashboard (and anything under it)
 const needsOnboarding = createRouteMatcher(['/dashboard(.*)'])
 
 export default clerkMiddleware(async (auth, req) => {
-  if (!needsOnboarding(req)) return
+  try {
+    // If this path isn't protected, just continue
+    if (!needsOnboarding(req)) {
+      return NextResponse.next()
+    }
 
-  const { userId, redirectToSignIn } = auth()
+    const { userId, redirectToSignIn } = auth()
 
-  // Not signed in? Send them to sign in first.
-  if (!userId) {
-    return redirectToSignIn({ returnBackUrl: req.url })
-  }
+    // Not signed in -> send to sign-in
+    if (!userId) {
+      return redirectToSignIn({ returnBackUrl: req.url })
+    }
 
-  // Look up the current user and read our onboarding flag
-  const user = await clerkClient.users.getUser(userId)
+    // Read the onboarding flag (either public or unsafe)
+    const user = await clerkClient.users.getUser(userId)
+    const hasOnboarded =
+      Boolean((user.publicMetadata as any)?.hasOnboarded) ||
+      Boolean((user.unsafeMetadata as any)?.hasOnboarded)
 
-  const hasOnboarded =
-    Boolean((user.publicMetadata as any)?.hasOnboarded) ||
-    Boolean((user.unsafeMetadata as any)?.hasOnboarded)
+    if (!hasOnboarded) {
+      const url = new URL('/onboarding', req.url)
+      return NextResponse.redirect(url)
+    }
 
-  if (!hasOnboarded) {
-    const url = new URL('/onboarding', req.url)
-    return Response.redirect(url)
+    // User is good, continue
+    return NextResponse.next()
+  } catch {
+    // Fail open so your site never goes down because of middleware
+    return NextResponse.next()
   }
 })
 
-/** Run on all routes except Next.js assets and static files */
+// Clerk’s recommended matcher: run on everything except static files and _next,
+// and also include root + api routes.
 export const config = {
-  matcher: [
-    '/((?!_next|favicon.ico|icon.png|apple-icon|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|map)).*)',
-  ],
+  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
 }
