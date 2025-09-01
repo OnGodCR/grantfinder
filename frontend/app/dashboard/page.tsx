@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import Link from 'next/link'
 import { useAuth, useUser } from '@clerk/nextjs'
@@ -13,10 +13,18 @@ export default function Dashboard() {
   const { getToken } = useAuth()
   const { isLoaded, isSignedIn, user } = useUser()
 
+  // Read and normalize onboarding flag
   const hasOnboarded = useMemo(
     () => Boolean((user?.unsafeMetadata as any)?.hasOnboarded),
     [user]
   )
+
+  // Safely extract a "profile" object from unsafeMetadata (may not exist)
+  const profile = useMemo(() => {
+    const raw = (user?.unsafeMetadata as any)?.profile
+    return raw && typeof raw === 'object' ? (raw as any) : undefined
+  }, [user])
+  const hasProfile = Boolean(profile)
 
   const [q, setQ] = useState('')
   const [items, setItems] = useState<any[]>([])
@@ -33,14 +41,14 @@ export default function Dashboard() {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
       setItems(res.data?.items ?? [])
-    } catch (e) {
+    } catch {
       setError('Unable to load grants. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  // Gate access to this page on the client (keeps middleware minimal & safe)
+  // Gate access to dashboard on client
   useEffect(() => {
     if (!isLoaded) return
     if (!isSignedIn) {
@@ -51,12 +59,12 @@ export default function Dashboard() {
       router.replace('/onboarding')
       return
     }
-    // Initial search when user is permitted to view dashboard
+    // Initial search once permitted
     search('')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn, hasOnboarded])
 
-  // While auth loads / redirecting, render a light placeholder
+  // Placeholder while auth loads / redirecting
   if (!isLoaded || !isSignedIn || !hasOnboarded) {
     return (
       <main className="max-w-5xl mx-auto mt-10">
@@ -65,22 +73,21 @@ export default function Dashboard() {
     )
   }
 
+  // Build a friendly hint string from profile (if present)
+  const areas =
+    Array.isArray(profile?.researchAreas) && profile.researchAreas.length
+      ? profile.researchAreas.join(', ')
+      : 'your research profile'
+
   return (
     <main className="max-w-5xl mx-auto mt-10">
       <div className="card mb-6">
         <h2 className="text-2xl font-semibold mb-2">Find Grants</h2>
 
-        {/* Optional: show a tiny hint from the user's profile if present */}
-        {user?.unsafeMetadata?.profile && (
+        {/* Small personalization hint (only if profile exists) */}
+        {hasProfile && (
           <p className="text-sm opacity-70 mb-3">
-            Tailoring results for{' '}
-            <span className="font-medium">
-              {Array.isArray((user.unsafeMetadata as any).profile?.researchAreas) &&
-              (user.unsafeMetadata as any).profile.researchAreas.length
-                ? (user.unsafeMetadata as any).profile.researchAreas.join(', ')
-                : 'your research profile'}
-            </span>
-            .
+            Tailoring results for <span className="font-medium">{areas}</span>.
           </p>
         )}
 
@@ -119,7 +126,12 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex flex-col gap-2 items-end">
-                <a className="btn" target="_blank" href={g.url || '#'} rel="noreferrer">
+                <a
+                  className="btn"
+                  target="_blank"
+                  href={g.url || '#'}
+                  rel="noreferrer"
+                >
                   View Source
                 </a>
                 <Link className="btn" href={`/grants/${g.id}`}>
