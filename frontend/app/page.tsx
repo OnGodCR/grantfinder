@@ -62,7 +62,7 @@ export default function Home() {
       <section className="mx-auto max-w-6xl px-4 pb-4">
         <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-center ring-1 ring-white/10">
           <p className="text-body">
-            👉 Stop missing opportunities. Start winning more grants.
+            We are currently looking to Pilot our services at Universities! Think you'd be a good fit?
           </p>
           <div className="mt-3">
             <a
