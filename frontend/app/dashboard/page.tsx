@@ -13,18 +13,17 @@ export default function Dashboard() {
   const { getToken } = useAuth()
   const { isLoaded, isSignedIn, user } = useUser()
 
-  // Read and normalize onboarding flag
-  const hasOnboarded = useMemo(
-    () => Boolean((user?.unsafeMetadata as any)?.hasOnboarded),
-    [user]
-  )
+  // Normalize flags/objects so we never render "unknown" in JSX
+  const hasOnboarded = useMemo<boolean>(() => {
+    const v = (user?.unsafeMetadata as any)?.hasOnboarded
+    return Boolean(v)
+  }, [user])
 
-  // Safely extract a "profile" object from unsafeMetadata (may not exist)
+  // Safe read of profile (Clerk types this as unknown)
   const profile = useMemo(() => {
     const raw = (user?.unsafeMetadata as any)?.profile
     return raw && typeof raw === 'object' ? (raw as any) : undefined
   }, [user])
-  const hasProfile = Boolean(profile)
 
   const [q, setQ] = useState('')
   const [items, setItems] = useState<any[]>([])
@@ -48,7 +47,7 @@ export default function Dashboard() {
     }
   }
 
-  // Gate access to dashboard on client
+  // Client-side guard for auth + onboarding
   useEffect(() => {
     if (!isLoaded) return
     if (!isSignedIn) {
@@ -59,12 +58,12 @@ export default function Dashboard() {
       router.replace('/onboarding')
       return
     }
-    // Initial search once permitted
+    // Initial search once allowed on page
     search('')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn, hasOnboarded])
 
-  // Placeholder while auth loads / redirecting
+  // Lightweight placeholder while auth resolves / redirects
   if (!isLoaded || !isSignedIn || !hasOnboarded) {
     return (
       <main className="max-w-5xl mx-auto mt-10">
@@ -73,7 +72,7 @@ export default function Dashboard() {
     )
   }
 
-  // Build a friendly hint string from profile (if present)
+  // Friendly hint built from profile (pure strings, never unknown in JSX)
   const areas =
     Array.isArray(profile?.researchAreas) && profile.researchAreas.length
       ? profile.researchAreas.join(', ')
@@ -84,12 +83,11 @@ export default function Dashboard() {
       <div className="card mb-6">
         <h2 className="text-2xl font-semibold mb-2">Find Grants</h2>
 
-        {/* Small personalization hint (only if profile exists) */}
-        {hasProfile && (
+        {profile ? (
           <p className="text-sm opacity-70 mb-3">
             Tailoring results for <span className="font-medium">{areas}</span>.
           </p>
-        )}
+        ) : null}
 
         <div className="flex gap-2">
           <input
