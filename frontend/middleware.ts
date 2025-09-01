@@ -1,45 +1,20 @@
 // frontend/middleware.ts
-import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server'
+import { clerkMiddleware } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 
-// Only gate /dashboard (and anything under it)
-const needsOnboarding = createRouteMatcher(['/dashboard(.*)'])
-
-export default clerkMiddleware(async (auth, req) => {
-  try {
-    // If this path isn't protected, just continue
-    if (!needsOnboarding(req)) {
-      return NextResponse.next()
-    }
-
-    const { userId, redirectToSignIn } = auth()
-
-    // Not signed in -> send to sign-in
-    if (!userId) {
-      return redirectToSignIn({ returnBackUrl: req.url })
-    }
-
-    // Read the onboarding flag (either public or unsafe)
-    const user = await clerkClient.users.getUser(userId)
-    const hasOnboarded =
-      Boolean((user.publicMetadata as any)?.hasOnboarded) ||
-      Boolean((user.unsafeMetadata as any)?.hasOnboarded)
-
-    if (!hasOnboarded) {
-      const url = new URL('/onboarding', req.url)
-      return NextResponse.redirect(url)
-    }
-
-    // User is good, continue
-    return NextResponse.next()
-  } catch {
-    // Fail open so your site never goes down because of middleware
-    return NextResponse.next()
-  }
+/**
+ * Keep middleware minimal and fail-open to avoid 500s.
+ * We are NOT doing any user lookups or redirects here.
+ * Clerk will attach auth to the request and we pass through.
+ */
+export default clerkMiddleware(() => {
+  return NextResponse.next()
 })
 
-// Clerk’s recommended matcher: run on everything except static files and _next,
-// and also include root + api routes.
+/**
+ * Recommended matcher from Clerk/Next.js so middleware runs on app routes
+ * but skips static assets and _next files.
+ */
 export const config = {
   matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
 }
