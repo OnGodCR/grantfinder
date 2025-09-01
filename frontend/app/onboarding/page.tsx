@@ -112,13 +112,13 @@ function Wizard() {
   function next() { setStep(s => Math.min(totalSteps, s + 1)) }
   function back() { setStep(s => Math.max(1, s - 1)) }
 
-  async function skip() {
+    async function skip() {
     if (!user) return
     setSaving(true)
     try {
       await user.update({
-        publicMetadata: {
-          ...(user.publicMetadata || {}),
+        unsafeMetadata: {
+          ...(user.unsafeMetadata || {}),
           hasOnboarded: true,
         },
       })
@@ -132,14 +132,31 @@ function Wizard() {
     if (!user) return
     setSaving(true)
     try {
-      // 1) Persist to Clerk publicMetadata (easy and immediate)
+      // Store the full profile client-side in unsafeMetadata
       await user.update({
-        publicMetadata: {
-          ...(user.publicMetadata || {}),
+        unsafeMetadata: {
+          ...(user.unsafeMetadata || {}),
           profile: data,
           hasOnboarded: true,
         },
       })
+
+      // Optional: ping your backend to build vectors, etc.
+      const url = process.env.NEXT_PUBLIC_PROFILE_WEBHOOK_URL || process.env.PROFILE_WEBHOOK_URL
+      if (url) {
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, profile: data }),
+        }).catch(() => {})
+      }
+
+      router.replace('/dashboard')
+    } finally {
+      setSaving(false)
+    }
+  }
+
 
       // 2) (Optional) Kick off vector creation in your backend
       //    Set PROFILE_WEBHOOK_URL in your Vercel env to your backend endpoint.
