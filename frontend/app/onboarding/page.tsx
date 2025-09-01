@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from '@clerk/nextjs'
 
-/** ---------- Lightweight enums & options ---------- */
+/** ---------- Options ---------- */
 
 const DEPARTMENTS = [
   'Engineering', 'Medicine', 'Arts & Sciences', 'Public Health', 'Education',
@@ -74,7 +74,7 @@ export default function OnboardingPage() {
   )
 }
 
-/** ---------- Wizard component ---------- */
+/** ---------- Wizard ---------- */
 
 function Wizard() {
   const router = useRouter()
@@ -102,8 +102,11 @@ function Wizard() {
   // If already completed, go straight to dashboard
   useEffect(() => {
     if (!isLoaded || !user) return
-    const completed = (user.publicMetadata as any)?.hasOnboarded
-    if (completed) router.replace('/dashboard')
+    const publicFlag = Boolean((user.publicMetadata as any)?.hasOnboarded)
+    const unsafeFlag = Boolean((user.unsafeMetadata as any)?.hasOnboarded)
+    if (publicFlag || unsafeFlag) {
+      router.replace('/dashboard')
+    }
   }, [isLoaded, user, router])
 
   const totalSteps = 4
@@ -112,7 +115,7 @@ function Wizard() {
   function next() { setStep(s => Math.min(totalSteps, s + 1)) }
   function back() { setStep(s => Math.max(1, s - 1)) }
 
-    async function skip() {
+  async function skip() {
     if (!user) return
     setSaving(true)
     try {
@@ -132,7 +135,7 @@ function Wizard() {
     if (!user) return
     setSaving(true)
     try {
-      // Store the full profile client-side in unsafeMetadata
+      // Save profile + flag to Clerk (client-safe field)
       await user.update({
         unsafeMetadata: {
           ...(user.unsafeMetadata || {}),
@@ -141,28 +144,9 @@ function Wizard() {
         },
       })
 
-      // Optional: ping your backend to build vectors, etc.
+      // Optional webhook to your backend for vector creation
       const url = process.env.NEXT_PUBLIC_PROFILE_WEBHOOK_URL || process.env.PROFILE_WEBHOOK_URL
       if (url) {
-        fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id, profile: data }),
-        }).catch(() => {})
-      }
-
-      router.replace('/dashboard')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-
-      // 2) (Optional) Kick off vector creation in your backend
-      //    Set PROFILE_WEBHOOK_URL in your Vercel env to your backend endpoint.
-      const url = process.env.NEXT_PUBLIC_PROFILE_WEBHOOK_URL || process.env.PROFILE_WEBHOOK_URL
-      if (url) {
-        // fire-and-forget; errors ignored on purpose
         fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -419,7 +403,7 @@ function SectionThree({
             />
           ))}
         </div>
-      </div>
+      </div }
 
       <div>
         <label className="mb-2 block text-sm font-medium">Deadline sensitivity</label>
