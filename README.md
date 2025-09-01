@@ -46,4 +46,6 @@ See the full beginner guide in `docs/deployment_guide.md` for production steps.
 
 ---
 
+
+Grantlytic
 **Security & Compliance**: Before selling to universities, you must add SSO/SAML if required, finalize RBAC, perform security audits, add rate limiting/monitoring/logging, and ensure data privacy (FERPA/GDPR as applicable).
