@@ -13,9 +13,12 @@ export default clerkMiddleware(async (auth, req) => {
     return redirectToSignIn({ returnBackUrl: req.url })
   }
 
-  // Look up the current user and read the flag we set during onboarding
+  // Look up the current user and read our onboarding flag
   const user = await clerkClient.users.getUser(userId)
-  const hasOnboarded = Boolean((user.publicMetadata as any)?.hasOnboarded)
+
+  const hasOnboarded =
+    Boolean((user.publicMetadata as any)?.hasOnboarded) ||
+    Boolean((user.unsafeMetadata as any)?.hasOnboarded)
 
   if (!hasOnboarded) {
     const url = new URL('/onboarding', req.url)
