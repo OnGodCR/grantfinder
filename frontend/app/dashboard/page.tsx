@@ -15,9 +15,7 @@ type Grant = {
   match?: number | null
 }
 
-// Ensure trailing slashes are removed; default to local dev if env is missing
-const API_BASE =
-  (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000/api').replace(/\/+$/, '')
+const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000/api').replace(/\/+$/, '')
 
 export default function Dashboard() {
   const [q, setQ] = useState('')
@@ -26,17 +24,16 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const { getToken } = useAuth()
 
-  const fetchGrants = async (query: string) => {
+  async function fetchGrants(query: string) {
     setLoading(true)
     setError(null)
     try {
-      // Include Clerk token only if available (safe for backends that don't require it)
       let headers: Record<string, string> | undefined
       try {
         const token = await getToken()
         if (token) headers = { Authorization: `Bearer ${token}` }
       } catch {
-        // ignore if Clerk isn't ready; call still works if backend doesn't require auth
+        /* ignore if token unavailable */
       }
 
       const res = await axios.get(`${API_BASE}/grants`, {
@@ -55,10 +52,12 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    fetchGrants('') // Initial load
-  }, []) // keep this exact line—balanced brackets avoid parser issues
+    void fetchGrants('')
+  }, []) // important: keep the semicolon after useEffect’s closing brace on the next line
 
-  const onSearch = () => fetchGrants(q.trim())
+  const onSearch = () => {
+    void fetchGrants(q.trim())
+  }
 
   return (
     <main className="max-w-5xl mx-auto mt-10">
@@ -97,17 +96,13 @@ export default function Dashboard() {
                 <div className="text-sm opacity-70 mt-2">
                   {g.deadline ? (
                     <span>
-                      Deadline:{' '}
-                      {new Date(g.deadline).toLocaleDateString(undefined, {
-                        dateStyle: 'medium',
-                      })}
+                      Deadline{' '}
+                      {new Date(g.deadline).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                     </span>
                   ) : (
                     <span>No deadline listed</span>
                   )}
-                  {typeof g.match === 'number' ? (
-                    <span className="ml-3">Match: {g.match}%</span>
-                  ) : null}
+                  {typeof g.match === 'number' ? <span className="ml-3">Match: {g.match}%</span> : null}
                 </div>
               </div>
               <div className="flex flex-col gap-2 items-end">
