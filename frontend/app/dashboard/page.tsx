@@ -1,137 +1,149 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import axios from 'axios'
-import { useAuth, useUser } from '@clerk/nextjs'
-import AppShell from '@/components/AppShell'
+import { useAuth } from '@clerk/nextjs'
 
-const API =
-  process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000/api'
-
-type GrantItem = {
+type Grant = {
   id: string
   title: string
-  summary?: string
-  deadline?: string
-  match?: number
-  url?: string
+  summary?: string | null
+  url?: string | null
+  deadline?: string | null
+  source?: string | null
+  match?: number | null // your API can send a computed score; falls back to 0
 }
 
-export default function Dashboard() {
-  const [q, setQ] = useState('')
-  const [items, setItems] = useState<GrantItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const { getToken } = useAuth()
-  const { user } = useUser()
+const API_BASE =
+  (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '') || 'http://localhost:4000/api'
 
-  async function search() {
+export default function Dashboard() {
+  const { getToken } = useAuth()
+
+  const [q, setQ] = useState('')
+  const [items, setItems] = useState<Grant[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const apiUrl = useMemo(() => {
+    const base = API_BASE
+    const param = q ? `?q=${encodeURIComponent(q)}` : ''
+    return `${base}/grants${param}`
+  }, [q])
+
+  async function fetchGrants() {
     setLoading(true)
+    setError(null)
     try {
       const token = await getToken()
-      const res = await axios.get(`${API}/grants`, {
-        params: { q },
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      const res = await fetch(apiUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        cache: 'no-store',
       })
-      setItems(Array.isArray(res.data?.items) ? res.data.items : [])
-    } catch (e) {
-      console.error(e)
+      if (!res.ok) {
+        // Try to read error message from API if present
+        let msg = `API error ${res.status}`
+        try {
+          const body = await res.json()
+          if (body?.error) msg = String(body.error)
+        } catch {
+          /* ignore */
+        }
+        throw new Error(msg)
+      }
+      const data = (await res.json()) as { items?: Grant[] }
+      setItems(Array.isArray(data.items) ? data.items : [])
+    } catch (e: any) {
+      setError(e?.message || 'Failed to fetch grants')
       setItems([])
     } finally {
       setLoading(false)
     }
   }
 
+  // Initial load
   useEffect(() => {
-    search()
+    fetchGrants()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Press Enter to search
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') fetchGrants()
+  }
+
   return (
-    <AppShell>
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold">Discover New Grants</h1>
+    <main className="mx-auto max-w-5xl px-4 pt-10 pb-16">
+      <div className="card mb-6">
+        <h2 className="text-2xl font-semibold mb-2">Discover New Grants</h2>
 
-          {/* Optional hint based on profile keywords if present */}
-          {user?.unsafeMetadata?.profile ? (
-            <p className="mt-1 text-sm opacity-70">
-              Tailoring results for{' '}
-              <span className="font-medium">
-                {(user.unsafeMetadata as any).profile.keywords ?? 'your profile'}
-              </span>
-              .
-            </p>
-          ) : null}
-        </header>
-
-        {/* Search + Filter row */}
-        <div className="mb-6 flex gap-2">
+        <div className="flex gap-2">
           <input
             className="input flex-1"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            onKeyDown={onKeyDown}
             placeholder="Search by keywords or paste a research question…"
           />
-          <button className="btn" onClick={search} disabled={loading}>
+          <button className="btn" onClick={fetchGrants} disabled={loading}>
             {loading ? 'Searching…' : 'Search'}
           </button>
-          <button className="btn border border-white/20 bg-transparent">
-            Filter
-          </button>
         </div>
 
-        {/* Results */}
-        <div className="grid gap-4">
-          {items.map((g) => (
-            <div key={g.id} className="card">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">{g.title}</h3>
-                  {g.summary ? (
-                    <p className="mt-1 opacity-80">{g.summary}</p>
-                  ) : null}
-                  <div className="mt-2 text-sm opacity-70">
-                    {g.deadline ? (
-                      <span>
-                        Deadline:{' '}
-                        {new Date(g.deadline).toLocaleDateString()}
-                      </span>
-                    ) : (
-                      <span>No deadline listed</span>
-                    )}
-                    {typeof g.match === 'number' ? (
-                      <span className="ml-3">Match: {g.match}%</span>
-                    ) : null}
-                  </div>
-                </div>
+        {error ? (
+          <p className="mt-3 text-red-400 text-sm">Error: {error}</p>
+        ) : null}
+      </div>
 
-                <div className="flex gap-2 md:ml-4">
-                  {/* Save is a placeholder for now */}
-                  <button className="btn border border-white/20 bg-transparent">
-                    Save
-                  </button>
-                  <a
-                    className="btn"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={g.url || '#'}
-                  >
-                    View Source
-                  </a>
-                  <Link className="btn" href={`/grants/${g.id}`}>
-                    View Details
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* Results */}
+      <div className="grid gap-4">
+        {loading && items.length === 0 ? (
+          <div className="card">Loading grants…</div>
+        ) : null}
 
-          {!loading && items.length === 0 ? (
-            <p className="opacity-70">No results yet. Try a search above.</p>
+        {!loading && items.length === 0 ? (
+          <div className="card text-sm opacity-80">
+            No grants found{q ? ` for “${q}”` : ''}. Try a broader query like “climate” or
+            “education”.
+          </div>
+        ) : null}
+
+        {items.map((g) => (
+          <GrantRow key={g.id} g={g} />
+        ))}
+      </div>
+    </main>
+  )
+}
+
+function GrantRow({ g }: { g: Grant }) {
+  const match = typeof g.match === 'number' ? g.match : 0
+  const deadline =
+    g.deadline ? new Date(g.deadline).toLocaleDateString() : 'No deadline listed'
+
+  return (
+    <div className="card">
+      <div className="flex justify-between gap-6">
+        <div>
+          <h3 className="text-xl font-semibold">{g.title}</h3>
+          {g.summary ? (
+            <p className="opacity-80">{g.summary}</p>
           ) : null}
+          <div className="text-sm opacity-70 mt-2">
+            <span>Deadline: {deadline}</span>
+            <span className="ml-3">Match: {match}%</span>
+            {g.source ? <span className="ml-3">Source: {g.source}</span> : null}
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 items-end">
+          <a className="btn" target="_blank" rel="noreferrer" href={g.url || '#'}>
+            View Source
+          </a>
+          <Link className="btn" href={`/grants/${g.id}`}>
+            Details
+          </Link>
         </div>
       </div>
-    </AppShell>
+    </div>
   )
 }
