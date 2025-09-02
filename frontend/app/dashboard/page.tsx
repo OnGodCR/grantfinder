@@ -15,7 +15,8 @@ type Grant = {
   match?: number | null;
 };
 
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000/api').replace(/\/+$/, '');
+const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
+const GRANTS_URL = `${BASE}/api/grants`;
 
 export default function Dashboard() {
   const [q, setQ] = useState('');
@@ -27,27 +28,42 @@ export default function Dashboard() {
   async function fetchGrants(query: string) {
     setLoading(true);
     setError(null);
+
+    // Helper to normalize many possible backend shapes
+    const normalize = (data: any): Grant[] => {
+      if (Array.isArray(data)) return data as Grant[];
+      if (Array.isArray(data?.items)) return data.items as Grant[];
+      if (Array.isArray(data?.grants)) return data.grants as Grant[];
+      return [];
+    };
+
     try {
-      let headers: Record<string, string> | undefined = undefined;
+      // 1) Try without auth header first (works for public endpoints)
       try {
-        const token = await getToken();
-        if (token) {
-          headers = { Authorization: `Bearer ${token}` };
-        }
-      } catch {
-        // ok if backend does not require auth
+        const res = await axios.get(GRANTS_URL, { params: { q: query } });
+        setItems(normalize(res.data));
+        return;
+      } catch (e: any) {
+        // If clearly unauthorized, retry with Clerk token
+        const status = e?.response?.status;
+        if (status !== 401) throw e;
       }
 
-      const res = await axios.get(`${API_BASE}/grants`, {
-        params: { q: query },
-        headers,
-      });
-      const data = res.data;
-      const list: Grant[] = Array.isArray(data?.items) ? data.items : [];
-      setItems(list);
+      // 2) Retry with Clerk token if 401
+      try {
+        const token = await getToken();
+        const res = await axios.get(GRANTS_URL, {
+          params: { q: query },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        setItems(normalize(res.data));
+      } catch (e2: any) {
+        const msg = e2?.response?.data?.message || 'Grants failed to appear';
+        setError(msg);
+        setItems([]);
+      }
     } catch (e: any) {
-      console.error(e);
-      const msg = e?.response?.data?.message || 'Failed to load grants';
+      const msg = e?.response?.data?.message || 'Grants failed to appear';
       setError(msg);
       setItems([]);
     } finally {
@@ -67,7 +83,6 @@ export default function Dashboard() {
     <main className="max-w-5xl mx-auto mt-10">
       <div className="card mb-6">
         <h2 className="text-2xl font-semibold mb-2">Find Grants</h2>
-
         <div className="flex gap-2">
           <input
             className="input"
@@ -78,10 +93,6 @@ export default function Dashboard() {
           <button className="btn" onClick={onSearch} disabled={loading}>
             {loading ? 'Searching...' : 'Search'}
           </button>
-        </div>
-
-        <div className="mt-3 text-sm opacity-70">
-          Using API: <code>{API_BASE}/grants</code>
         </div>
         {error && <div className="mt-3 text-sm text-red-400">Error: {error}</div>}
       </div>
@@ -106,7 +117,9 @@ export default function Dashboard() {
                   ) : (
                     <span>No deadline listed</span>
                   )}
-                  {typeof g.match === 'number' ? <span className="ml-3">Match: {g.match}%</span> : null}
+                  {typeof g.match === 'number' ? (
+                    <span className="ml-3">Match: {g.match}%</span>
+                  ) : null}
                 </div>
               </div>
               <div className="flex flex-col gap-2 items-end">
