@@ -15,8 +15,9 @@ type Grant = {
   match?: number | null
 }
 
+// Ensure trailing slashes are removed; default to local dev if env is missing
 const API_BASE =
-  (process.env.NEXT_PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '') || 'http://localhost:4000/api'
+  (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000/api').replace(/\/+$/, '')
 
 export default function Dashboard() {
   const [q, setQ] = useState('')
@@ -25,20 +26,23 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const { getToken } = useAuth()
 
-  async function fetchGrants(query: string) {
+  const fetchGrants = async (query: string) => {
     setLoading(true)
     setError(null)
-
     try {
-      const token = await getToken().catch(() => undefined)
+      // Include Clerk token only if available (safe for backends that don't require it)
+      let headers: Record<string, string> | undefined
+      try {
+        const token = await getToken()
+        if (token) headers = { Authorization: `Bearer ${token}` }
+      } catch {
+        // ignore if Clerk isn't ready; call still works if backend doesn't require auth
+      }
 
       const res = await axios.get(`${API_BASE}/grants`, {
         params: { q: query },
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        // If your backend doesn’t need the token, you can delete the headers line above.
+        headers,
       })
-
-      // Expecting { items: [...] }
       const data = res.data
       setItems(Array.isArray(data?.items) ? data.items : [])
     } catch (e: any) {
@@ -50,14 +54,11 @@ export default function Dashboard() {
     }
   }
 
-  function search() {
-    fetchGrants(q.trim())
-  }
-
   useEffect(() => {
-    fetchGrants('') // initial load
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    fetchGrants('') // Initial load
+  }, []) // keep this exact line—balanced brackets avoid parser issues
+
+  const onSearch = () => fetchGrants(q.trim())
 
   return (
     <main className="max-w-5xl mx-auto mt-10">
@@ -71,12 +72,11 @@ export default function Dashboard() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search by keywords or paste a research question..."
           />
-          <button className="btn" onClick={search} disabled={loading}>
+          <button className="btn" onClick={onSearch} disabled={loading}>
             {loading ? 'Searching…' : 'Search'}
           </button>
         </div>
 
-        {/* Helpful status */}
         <div className="mt-3 text-sm opacity-70">
           Using API: <code>{API_BASE}/grants</code>
         </div>
@@ -97,16 +97,31 @@ export default function Dashboard() {
                 <div className="text-sm opacity-70 mt-2">
                   {g.deadline ? (
                     <span>
-                      Deadline: {new Date(g.deadline).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                      Deadline:{' '}
+                      {new Date(g.deadline).toLocaleDateString(undefined, {
+                        dateStyle: 'medium',
+                      })}
                     </span>
                   ) : (
                     <span>No deadline listed</span>
                   )}
-                  {typeof g.match === 'number' ? <span className="ml-3">Match: {g.match}%</span> : null}
+                  {typeof g.match === 'number' ? (
+                    <span className="ml-3">Match: {g.match}%</span>
+                  ) : null}
                 </div>
               </div>
               <div className="flex flex-col gap-2 items-end">
                 <a className="btn" target="_blank" href={g.url || '#'} rel="noreferrer">
                   View Source
                 </a>
-                <Link className="btn" href=
+                <Link className="btn" href={`/grants/${g.id}`}>
+                  Details
+                </Link>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </main>
+  )
+}
