@@ -16,7 +16,8 @@ type Grant = {
 };
 
 const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
-const GRANTS_URL = `${BASE}/api/grants`;
+const GRANTS_URL = '/api/grants';
+
 
 export default function Dashboard() {
   const [q, setQ] = useState('');
