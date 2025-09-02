@@ -1,62 +1,66 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-import Link from 'next/link'
-import { useAuth } from '@clerk/nextjs'
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
 
 type Grant = {
-  id: string
-  title: string
-  summary?: string
-  description?: string
-  url?: string
-  deadline?: string | null
-  match?: number | null
-}
+  id: string;
+  title: string;
+  summary?: string;
+  description?: string;
+  url?: string;
+  deadline?: string | null;
+  match?: number | null;
+};
 
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000/api').replace(/\/+$/, '')
+const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000/api').replace(/\/+$/, '');
 
 export default function Dashboard() {
-  const [q, setQ] = useState('')
-  const [items, setItems] = useState<Grant[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const { getToken } = useAuth()
+  const [q, setQ] = useState('');
+  const [items, setItems] = useState<Grant[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
 
   async function fetchGrants(query: string) {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      let headers: Record<string, string> | undefined
+      let headers: Record<string, string> | undefined = undefined;
       try {
-        const token = await getToken()
-        if (token) headers = { Authorization: `Bearer ${token}` }
+        const token = await getToken();
+        if (token) {
+          headers = { Authorization: `Bearer ${token}` };
+        }
       } catch {
-        /* ignore if token unavailable */
+        // ok if backend does not need auth
       }
 
       const res = await axios.get(`${API_BASE}/grants`, {
         params: { q: query },
         headers,
-      })
-      const data = res.data
-      setItems(Array.isArray(data?.items) ? data.items : [])
+      });
+      const data = res.data;
+      const list: Grant[] = Array.isArray(data?.items) ? data.items : [];
+      setItems(list);
     } catch (e: any) {
-      console.error(e)
-      setError(e?.response?.data?.message || 'Failed to load grants')
-      setItems([])
+      console.error(e);
+      const msg = e?.response?.data?.message || 'Failed to load grants';
+      setError(msg);
+      setItems([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    void fetchGrants('')
-  }, []) // important: keep the semicolon after useEffect’s closing brace on the next line
+    void fetchGrants('');
+  }, []);
 
-  const onSearch = () => {
-    void fetchGrants(q.trim())
+  function onSearch() {
+    void fetchGrants(q.trim());
   }
 
   return (
@@ -72,7 +76,7 @@ export default function Dashboard() {
             placeholder="Search by keywords or paste a research question..."
           />
           <button className="btn" onClick={onSearch} disabled={loading}>
-            {loading ? 'Searching…' : 'Search'}
+            {loading ? 'Searching...' : 'Search'}
           </button>
         </div>
 
@@ -96,7 +100,7 @@ export default function Dashboard() {
                 <div className="text-sm opacity-70 mt-2">
                   {g.deadline ? (
                     <span>
-                      Deadline{' '}
+                      Deadline:{' '}
                       {new Date(g.deadline).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                     </span>
                   ) : (
@@ -118,5 +122,5 @@ export default function Dashboard() {
         ))}
       </div>
     </main>
-  )
+  );
 }
