@@ -1,149 +1,112 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import axios from 'axios'
 import Link from 'next/link'
 import { useAuth } from '@clerk/nextjs'
 
 type Grant = {
   id: string
   title: string
-  summary?: string | null
-  url?: string | null
+  summary?: string
+  description?: string
+  url?: string
   deadline?: string | null
-  source?: string | null
-  match?: number | null // your API can send a computed score; falls back to 0
+  match?: number | null
 }
 
 const API_BASE =
-  (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '') || 'http://localhost:4000/api'
+  (process.env.NEXT_PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '') || 'http://localhost:4000/api'
 
 export default function Dashboard() {
-  const { getToken } = useAuth()
-
   const [q, setQ] = useState('')
   const [items, setItems] = useState<Grant[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { getToken } = useAuth()
 
-  const apiUrl = useMemo(() => {
-    const base = API_BASE
-    const param = q ? `?q=${encodeURIComponent(q)}` : ''
-    return `${base}/grants${param}`
-  }, [q])
-
-  async function fetchGrants() {
+  async function fetchGrants(query: string) {
     setLoading(true)
     setError(null)
+
     try {
-      const token = await getToken()
-      const res = await fetch(apiUrl, {
+      const token = await getToken().catch(() => undefined)
+
+      const res = await axios.get(`${API_BASE}/grants`, {
+        params: { q: query },
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        cache: 'no-store',
+        // If your backend doesn’t need the token, you can delete the headers line above.
       })
-      if (!res.ok) {
-        // Try to read error message from API if present
-        let msg = `API error ${res.status}`
-        try {
-          const body = await res.json()
-          if (body?.error) msg = String(body.error)
-        } catch {
-          /* ignore */
-        }
-        throw new Error(msg)
-      }
-      const data = (await res.json()) as { items?: Grant[] }
-      setItems(Array.isArray(data.items) ? data.items : [])
+
+      // Expecting { items: [...] }
+      const data = res.data
+      setItems(Array.isArray(data?.items) ? data.items : [])
     } catch (e: any) {
-      setError(e?.message || 'Failed to fetch grants')
+      console.error(e)
+      setError(e?.response?.data?.message || 'Failed to load grants')
       setItems([])
     } finally {
       setLoading(false)
     }
   }
 
-  // Initial load
+  function search() {
+    fetchGrants(q.trim())
+  }
+
   useEffect(() => {
-    fetchGrants()
+    fetchGrants('') // initial load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Press Enter to search
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') fetchGrants()
-  }
-
   return (
-    <main className="mx-auto max-w-5xl px-4 pt-10 pb-16">
+    <main className="max-w-5xl mx-auto mt-10">
       <div className="card mb-6">
-        <h2 className="text-2xl font-semibold mb-2">Discover New Grants</h2>
+        <h2 className="text-2xl font-semibold mb-2">Find Grants</h2>
 
         <div className="flex gap-2">
           <input
-            className="input flex-1"
+            className="input"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="Search by keywords or paste a research question…"
+            placeholder="Search by keywords or paste a research question..."
           />
-          <button className="btn" onClick={fetchGrants} disabled={loading}>
+          <button className="btn" onClick={search} disabled={loading}>
             {loading ? 'Searching…' : 'Search'}
           </button>
         </div>
 
-        {error ? (
-          <p className="mt-3 text-red-400 text-sm">Error: {error}</p>
-        ) : null}
+        {/* Helpful status */}
+        <div className="mt-3 text-sm opacity-70">
+          Using API: <code>{API_BASE}/grants</code>
+        </div>
+        {error && <div className="mt-3 text-sm text-red-400">Error: {error}</div>}
       </div>
 
-      {/* Results */}
       <div className="grid gap-4">
-        {loading && items.length === 0 ? (
-          <div className="card">Loading grants…</div>
-        ) : null}
-
-        {!loading && items.length === 0 ? (
-          <div className="card text-sm opacity-80">
-            No grants found{q ? ` for “${q}”` : ''}. Try a broader query like “climate” or
-            “education”.
-          </div>
-        ) : null}
+        {items.length === 0 && !loading && !error && (
+          <div className="card">No grants yet. Try another search.</div>
+        )}
 
         {items.map((g) => (
-          <GrantRow key={g.id} g={g} />
-        ))}
-      </div>
-    </main>
-  )
-}
-
-function GrantRow({ g }: { g: Grant }) {
-  const match = typeof g.match === 'number' ? g.match : 0
-  const deadline =
-    g.deadline ? new Date(g.deadline).toLocaleDateString() : 'No deadline listed'
-
-  return (
-    <div className="card">
-      <div className="flex justify-between gap-6">
-        <div>
-          <h3 className="text-xl font-semibold">{g.title}</h3>
-          {g.summary ? (
-            <p className="opacity-80">{g.summary}</p>
-          ) : null}
-          <div className="text-sm opacity-70 mt-2">
-            <span>Deadline: {deadline}</span>
-            <span className="ml-3">Match: {match}%</span>
-            {g.source ? <span className="ml-3">Source: {g.source}</span> : null}
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 items-end">
-          <a className="btn" target="_blank" rel="noreferrer" href={g.url || '#'}>
-            View Source
-          </a>
-          <Link className="btn" href={`/grants/${g.id}`}>
-            Details
-          </Link>
-        </div>
-      </div>
-    </div>
-  )
-}
+          <div key={g.id} className="card">
+            <div className="flex justify-between">
+              <div>
+                <h3 className="text-xl font-semibold">{g.title}</h3>
+                <p className="opacity-80">{g.summary || g.description}</p>
+                <div className="text-sm opacity-70 mt-2">
+                  {g.deadline ? (
+                    <span>
+                      Deadline: {new Date(g.deadline).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                    </span>
+                  ) : (
+                    <span>No deadline listed</span>
+                  )}
+                  {typeof g.match === 'number' ? <span className="ml-3">Match: {g.match}%</span> : null}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 items-end">
+                <a className="btn" target="_blank" href={g.url || '#'} rel="noreferrer">
+                  View Source
+                </a>
+                <Link className="btn" href=
