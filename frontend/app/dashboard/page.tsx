@@ -3,13 +3,18 @@
 import { useAuth } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 
-type View = { ok: boolean; status: number; body: any; error?: string };
+type View = {
+  ok: boolean;
+  status: number;
+  url: string;
+  body: any;
+  error?: string;
+};
 
 export default function DashboardPage() {
   const { getToken, isSignedIn } = useAuth();
   const [res, setRes] = useState<View | null>(null);
 
-  // Your Railway base URL is read from NEXT_PUBLIC_BACKEND_URL
   const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '');
 
   useEffect(() => {
@@ -17,7 +22,8 @@ export default function DashboardPage() {
       try {
         const token = isSignedIn ? await getToken() : undefined;
 
-        const r = await fetch(`${BASE}/api/grants`, {
+        const url = `${BASE}/api/grants`;
+        const r = await fetch(url, {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
@@ -26,12 +32,21 @@ export default function DashboardPage() {
           body: JSON.stringify({ q: '' }),
         });
 
-        let body: any = null;
-        try { body = await r.json(); } catch { body = await r.text(); }
+        // ✅ Read body exactly once using clone().text(), then try JSON.parse
+        const text = await r.clone().text();
+        let body: any = text;
+        try { body = JSON.parse(text); } catch { /* leave as text */ }
 
-        setRes({ ok: r.ok, status: r.status, body });
+        setRes({ ok: r.ok, status: r.status, url, body });
       } catch (e: any) {
-        setRes({ ok: false, status: 0, body: null, error: e?.message || String(e) });
+        // Network/CORS/etc. errors land here (status will be 0)
+        setRes({
+          ok: false,
+          status: 0,
+          url: `${BASE}/api/grants`,
+          body: null,
+          error: e?.message || String(e),
+        });
       }
     })();
   }, [getToken, isSignedIn, BASE]);
@@ -47,9 +62,13 @@ export default function DashboardPage() {
 
       {!!res && (
         <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
-          <div><strong>Call:</strong> <code>POST {BASE}/api/grants</code></div>
+          <div><strong>Call:</strong> <code>POST {res.url}</code></div>
           <div><strong>Status:</strong> {res.status} • <strong>OK:</strong> {String(res.ok)}</div>
-          {res.error && <pre style={{ whiteSpace: 'pre-wrap' }}>Error: {res.error}</pre>}
+          {res.error && (
+            <pre style={{ whiteSpace: 'pre-wrap', color: '#b91c1c' }}>
+Error: {res.error}
+            </pre>
+          )}
           <details style={{ marginTop: 8 }}>
             <summary>Response Body</summary>
             <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
@@ -59,8 +78,8 @@ export default function DashboardPage() {
 
           {!res.ok && (
             <div style={{ marginTop: 12, color: '#b91c1c' }}>
-              <strong>Tip:</strong> If you see 401, make sure you’re signed in (Clerk) and your backend is verifying Clerk <em>LIVE</em> tokens.
-              If you see a CORS error, confirm your backend CORS allows <code>https://grantlytic.com</code>.
+              <strong>Hints:</strong> 401 → sign in (Clerk) & verify backend accepts Clerk <em>LIVE</em> tokens.
+              CORS error → confirm backend CORS allows <code>https://grantlytic.com</code> and <code>Authorization</code> header.
             </div>
           )}
         </div>
