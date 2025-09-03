@@ -1,27 +1,22 @@
 // frontend/lib/grants.ts
-// Directly call your Railway backend, no Next.js proxy.
+// This calls your Railway backend directly
 
 const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '');
 
-if (!BASE) {
-  // Helps you notice if the env var is missing in Vercel prod
-  console.warn('NEXT_PUBLIC_BACKEND_URL is missing');
-}
-
 export async function fetchGrants(q: string, token?: string) {
   const res = await fetch(`${BASE}/api/grants`, {
-    method: 'POST',                               // change to 'GET' if your backend expects GET
+    method: 'POST', // if your backend expects GET instead, change this to 'GET'
     headers: {
       'content-type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ q }),                  // if backend expects GET, put ?q=... in the URL and remove body
+    body: JSON.stringify({ q }),
     cache: 'no-store',
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Backend ${res.status}: ${text}`);
+    throw new Error(`Backend error ${res.status}`);
   }
+
   return res.json();
 }
