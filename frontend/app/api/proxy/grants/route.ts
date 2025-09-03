@@ -1,48 +1,46 @@
-import { NextResponse } from 'next/server';
+// frontend/app/api/proxy/grants/route.ts
+import { NextRequest, NextResponse } from 'next/server';
 
 const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
-// Point at the route that returns 200 in your Railway logs
-const TARGET = `${BASE}/api/internal/grants`;
+const UPSTREAM = `${BASE}/api/internal/grants`; // <-- this is the one that returns 200 on Railway
 
-/** Pass-through GET -> backend GET */
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const qs = url.searchParams.toString();
-  const targetUrl = qs ? `${TARGET}?${qs}` : TARGET;
+async function forwardToBackend(query: string, req: NextRequest) {
+  // Pass through an auth header if the frontend has one (Clerk etc.)
+  const auth = req.headers.get('authorization') ?? undefined;
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (auth) headers.authorization = auth;
 
-  try {
-    const res = await fetch(targetUrl, {
-      // forward auth if you start requiring it server-side
-      headers: {
-        // Keep it harmless if header is missing
-        Authorization: req.headers.get('authorization') ?? '',
-      },
-      cache: 'no-store',
-    });
+  // Your backend expects POST here
+  const upstreamRes = await fetch(UPSTREAM, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ q: query ?? '' }),
+  });
 
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
-  } catch (err) {
-    return NextResponse.json({ message: 'Upstream error contacting backend' }, { status: 502 });
-  }
+  // Bubble up backend status/body
+  const text = await upstreamRes.text();
+  return new NextResponse(text, {
+    status: upstreamRes.status,
+    headers: { 'content-type': upstreamRes.headers.get('content-type') ?? 'application/json' },
+  });
 }
 
-/** Pass-through POST -> backend POST (handy if you later add POST searches) */
-export async function POST(req: Request) {
-  try {
-    const body = await req.text(); // forward raw body
-    const res = await fetch(TARGET, {
-      method: 'POST',
-      headers: {
-        'content-type': req.headers.get('content-type') ?? 'application/json',
-        Authorization: req.headers.get('authorization') ?? '',
-      },
-      body,
-    });
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get('q') ?? '';
+  return forwardToBackend(q, req);
+}
 
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
-  } catch (err) {
-    return NextResponse.json({ message: 'Upstream error contacting backend' }, { status: 502 });
+export async function POST(req: NextRequest) {
+  // Accept either ?q=… or { q } in body
+  let q = '';
+  try {
+    const data = await req.json();
+    if (typeof data?.q === 'string') q = data.q;
+  } catch {}
+  if (!q) {
+    const { searchParams } = new URL(req.url);
+    q = searchParams.get('q') ?? '';
   }
+  return forwardToBackend(q, req);
 }
