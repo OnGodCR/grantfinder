@@ -9,6 +9,7 @@ type Grant = {
   id: string;
   title: string;
   summary?: string;
+  description?: string;
   url?: string;
   deadline?: string | null;
   match?: number | null;
@@ -21,51 +22,44 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
 
-  async function search(query = q) {
+  function normalize(data: any): Grant[] {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.grants)) return data.grants;
+    return [];
+    }
+
+  async function fetchGrants(query: string) {
     setLoading(true);
     setError(null);
-    try {
-      const token = await getToken();
 
+    try {
+      // Try unauthenticated first (public backend)
+      try {
+        const res = await axios.get('/api/proxy/grants', { params: { q: query } });
+        setItems(normalize(res.data));
+        return;
+      } catch (e: any) {
+        if (e?.response?.status !== 401) throw e;
+      }
+
+      // Retry with Clerk token if 401
+      const token = await getToken();
       const res = await axios.get('/api/proxy/grants', {
         params: { q: query },
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
-
-      const data = res.data;
-      const list = Array.isArray(data?.items) ? data.items : data;
-
-      const normalized: Grant[] = (list || []).map((g: any) => ({
-        id:
-          g.id ??
-          g.sourceId ??
-          g.url ??
-          Math.random().toString(36).slice(2),
-        title: g.title ?? 'Untitled',
-        summary: g.summary ?? g.description ?? '',
-        url: g.url,
-        deadline: g.deadline ?? null,
-        match:
-          typeof g.match === 'number'
-            ? g.match
-            : typeof g.score === 'number'
-            ? g.score
-            : null,
-      }));
-
-      setItems(normalized);
-    } catch (e) {
-      console.error(e);
-      setError('Could not load grants');
+      setItems(normalize(res.data));
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Grants failed to appear');
+      setItems([]);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    // initial fetch (empty query)
-    search('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void fetchGrants('');
   }, []);
 
   return (
@@ -79,55 +73,47 @@ export default function Dashboard() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search by keywords or paste a research question..."
           />
-          <button className="btn" onClick={() => search()}>
-            Search
+          <button className="btn" onClick={() => void fetchGrants(q.trim())} disabled={loading}>
+            {loading ? 'Searching…' : 'Search'}
           </button>
         </div>
-        {loading && <p className="mt-2 text-sm opacity-70">Loading…</p>}
-        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+        {error && <div className="mt-3 text-sm text-red-400">Error: {error}</div>}
       </div>
 
       <div className="grid gap-4">
+        {items.length === 0 && !loading && !error && (
+          <div className="card">No grants yet. Try another search.</div>
+        )}
+
         {items.map((g) => (
           <div key={g.id} className="card">
             <div className="flex justify-between">
               <div>
                 <h3 className="text-xl font-semibold">{g.title}</h3>
-                <p className="opacity-80">{g.summary}</p>
+                <p className="opacity-80">{g.summary || g.description}</p>
                 <div className="text-sm opacity-70 mt-2">
                   {g.deadline ? (
                     <span>
-                      Deadline: {new Date(g.deadline).toLocaleDateString()}
+                      Deadline{' '}
+                      {new Date(g.deadline).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                     </span>
                   ) : (
                     <span>No deadline listed</span>
                   )}
-                  {typeof g.match === 'number' ? (
-                    <span className="ml-3">Match: {g.match}%</span>
-                  ) : null}
+                  {typeof g.match === 'number' ? <span className="ml-3">Match: {g.match}%</span> : null}
                 </div>
               </div>
-
               <div className="flex flex-col gap-2 items-end">
-                <a
-                  className="btn"
-                  target="_blank"
-                  rel="noreferrer"
-                  href={g.url || '#'}
-                >
+                <a className="btn" target="_blank" href={g.url || '#'} rel="noreferrer">
                   View Source
                 </a>
-                <Link className="btn" href={`/grants/${encodeURIComponent(g.id)}`}>
+                <Link className="btn" href={`/grants/${g.id}`}>
                   Details
                 </Link>
               </div>
             </div>
           </div>
         ))}
-
-        {!loading && !error && items.length === 0 && (
-          <p className="opacity-70">No results yet — try a search.</p>
-        )}
       </div>
     </main>
   );
