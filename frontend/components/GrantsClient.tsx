@@ -1,9 +1,8 @@
-// frontend/components/GrantsClient.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { fetchGrants } from '@/lib/grants';
+import { fetchGrantsAuto } from '@/lib/grants';
 
 export default function GrantsClient() {
   const { getToken, isSignedIn } = useAuth();
@@ -14,8 +13,9 @@ export default function GrantsClient() {
     (async () => {
       try {
         const token = isSignedIn ? await getToken() : undefined;
-        const json = await fetchGrants('', token ?? undefined);
-        setData(json);
+        const r = await fetchGrantsAuto('', token ?? undefined);
+        if (!r.ok) throw new Error(`Backend ${r.status}`);
+        setData(r.body);
       } catch (e: any) {
         setError(e?.message || String(e));
       }
