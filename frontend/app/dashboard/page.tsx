@@ -2,13 +2,16 @@
 
 import { useAuth } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
+import { fetchGrantsAuto } from '@/lib/grants';
 
 type View = {
   ok: boolean;
   status: number;
   url: string;
+  method: 'POST' | 'GET';
   body: any;
   error?: string;
+  detected?: boolean;
 };
 
 export default function DashboardPage() {
@@ -21,31 +24,17 @@ export default function DashboardPage() {
     (async () => {
       try {
         const token = isSignedIn ? await getToken() : undefined;
-
-        const url = `${BASE}/api/grants`;
-        const r = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ q: '' }),
-        });
-
-        // ✅ Read body exactly once using clone().text(), then try JSON.parse
-        const text = await r.clone().text();
-        let body: any = text;
-        try { body = JSON.parse(text); } catch { /* leave as text */ }
-
-        setRes({ ok: r.ok, status: r.status, url, body });
+        const r = await fetchGrantsAuto('', token ?? undefined);
+        setRes(r as View);
       } catch (e: any) {
-        // Network/CORS/etc. errors land here (status will be 0)
         setRes({
           ok: false,
           status: 0,
           url: `${BASE}/api/grants`,
+          method: 'POST',
           body: null,
           error: e?.message || String(e),
+          detected: false,
         });
       }
     })();
@@ -58,12 +47,19 @@ export default function DashboardPage() {
         Backend: <code>{BASE || '(missing NEXT_PUBLIC_BACKEND_URL)'}</code>
       </p>
 
-      {!res && <div>Loading…</div>}
+      {!res && <div>Detecting endpoint…</div>}
 
       {!!res && (
         <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
-          <div><strong>Call:</strong> <code>POST {res.url}</code></div>
-          <div><strong>Status:</strong> {res.status} • <strong>OK:</strong> {String(res.ok)}</div>
+          <div>
+            <strong>Detected:</strong> {res.detected ? 'yes' : 'no'}
+          </div>
+          <div>
+            <strong>Call:</strong> <code>{res.method} {res.url}</code>
+          </div>
+          <div>
+            <strong>Status:</strong> {res.status} • <strong>OK:</strong> {String(res.ok)}
+          </div>
           {res.error && (
             <pre style={{ whiteSpace: 'pre-wrap', color: '#b91c1c' }}>
 Error: {res.error}
@@ -78,8 +74,8 @@ Error: {res.error}
 
           {!res.ok && (
             <div style={{ marginTop: 12, color: '#b91c1c' }}>
-              <strong>Hints:</strong> 401 → sign in (Clerk) & verify backend accepts Clerk <em>LIVE</em> tokens.
-              CORS error → confirm backend CORS allows <code>https://grantlytic.com</code> and <code>Authorization</code> header.
+              <strong>Hints:</strong> If everything 404s, your actual route might be named differently.
+              Check your backend router for the exact path and whether it expects GET or POST.
             </div>
           )}
         </div>
