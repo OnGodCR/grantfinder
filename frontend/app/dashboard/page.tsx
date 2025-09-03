@@ -40,7 +40,7 @@ export default function Dashboard() {
     try {
       // 1) Try without auth header first (works for public endpoints)
       try {
-        const res = await axios.get(GRANTS_URL, { params: { q: query } });
+        const res = await axios.get('/api/proxy/grants', { params: { q } });
         setItems(normalize(res.data));
         return;
       } catch (e: any) {
@@ -52,7 +52,7 @@ export default function Dashboard() {
       // 2) Retry with Clerk token if 401
       try {
         const token = await getToken();
-        const res = await axios.get(GRANTS_URL, {
+        const res = await axios.get('/api/proxy/grants', { params: { q } });
           params: { q: query },
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
