@@ -9,14 +9,10 @@ type Grant = {
   id: string;
   title: string;
   summary?: string;
-  description?: string;
   url?: string;
   deadline?: string | null;
   match?: number | null;
 };
-
-const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
-const GRANTS_URL = `${BASE}/api/grants`;
 
 export default function Dashboard() {
   const [q, setQ] = useState('');
@@ -25,59 +21,52 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
 
-  async function fetchGrants(query: string) {
+  async function search(query = q) {
     setLoading(true);
     setError(null);
-
-    // Helper to normalize many possible backend shapes
-    const normalize = (data: any): Grant[] => {
-      if (Array.isArray(data)) return data as Grant[];
-      if (Array.isArray(data?.items)) return data.items as Grant[];
-      if (Array.isArray(data?.grants)) return data.grants as Grant[];
-      return [];
-    };
-
     try {
-      // 1) Try without auth header first (works for public endpoints)
-      try {
-        const res = await axios.get('/api/proxy/grants', { params: { q } });
-        setItems(normalize(res.data));
-        return;
-      } catch (e: any) {
-        // If clearly unauthorized, retry with Clerk token
-        const status = e?.response?.status;
-        if (status !== 401) throw e;
-      }
+      const token = await getToken();
 
-      // 2) Retry with Clerk token if 401
-      try {
-        const token = await getToken();
-        const res = await axios.get('/api/proxy/grants', { params: { q } });
-          params: { q: query },
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        setItems(normalize(res.data));
-      } catch (e2: any) {
-        const msg = e2?.response?.data?.message || 'Grants failed to appear';
-        setError(msg);
-        setItems([]);
-      }
-    } catch (e: any) {
-      const msg = e?.response?.data?.message || 'Grants failed to appear';
-      setError(msg);
-      setItems([]);
+      const res = await axios.get('/api/proxy/grants', {
+        params: { q: query },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      const data = res.data;
+      const list = Array.isArray(data?.items) ? data.items : data;
+
+      const normalized: Grant[] = (list || []).map((g: any) => ({
+        id:
+          g.id ??
+          g.sourceId ??
+          g.url ??
+          Math.random().toString(36).slice(2),
+        title: g.title ?? 'Untitled',
+        summary: g.summary ?? g.description ?? '',
+        url: g.url,
+        deadline: g.deadline ?? null,
+        match:
+          typeof g.match === 'number'
+            ? g.match
+            : typeof g.score === 'number'
+            ? g.score
+            : null,
+      }));
+
+      setItems(normalized);
+    } catch (e) {
+      console.error(e);
+      setError('Could not load grants');
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    void fetchGrants('');
+    // initial fetch (empty query)
+    search('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function onSearch() {
-    void fetchGrants(q.trim());
-  }
 
   return (
     <main className="max-w-5xl mx-auto mt-10">
@@ -90,29 +79,25 @@ export default function Dashboard() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search by keywords or paste a research question..."
           />
-          <button className="btn" onClick={onSearch} disabled={loading}>
-            {loading ? 'Searching...' : 'Search'}
+          <button className="btn" onClick={() => search()}>
+            Search
           </button>
         </div>
-        {error && <div className="mt-3 text-sm text-red-400">Error: {error}</div>}
+        {loading && <p className="mt-2 text-sm opacity-70">Loading…</p>}
+        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
       </div>
 
       <div className="grid gap-4">
-        {items.length === 0 && !loading && !error && (
-          <div className="card">No grants yet. Try another search.</div>
-        )}
-
         {items.map((g) => (
           <div key={g.id} className="card">
             <div className="flex justify-between">
               <div>
                 <h3 className="text-xl font-semibold">{g.title}</h3>
-                <p className="opacity-80">{g.summary || g.description}</p>
+                <p className="opacity-80">{g.summary}</p>
                 <div className="text-sm opacity-70 mt-2">
                   {g.deadline ? (
                     <span>
-                      Deadline{' '}
-                      {new Date(g.deadline).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                      Deadline: {new Date(g.deadline).toLocaleDateString()}
                     </span>
                   ) : (
                     <span>No deadline listed</span>
@@ -122,17 +107,27 @@ export default function Dashboard() {
                   ) : null}
                 </div>
               </div>
+
               <div className="flex flex-col gap-2 items-end">
-                <a className="btn" target="_blank" href={g.url || '#'} rel="noreferrer">
+                <a
+                  className="btn"
+                  target="_blank"
+                  rel="noreferrer"
+                  href={g.url || '#'}
+                >
                   View Source
                 </a>
-                <Link className="btn" href={`/grants/${g.id}`}>
+                <Link className="btn" href={`/grants/${encodeURIComponent(g.id)}`}>
                   Details
                 </Link>
               </div>
             </div>
           </div>
         ))}
+
+        {!loading && !error && items.length === 0 && (
+          <p className="opacity-70">No results yet — try a search.</p>
+        )}
       </div>
     </main>
   );
