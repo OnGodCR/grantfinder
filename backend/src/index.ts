@@ -1,7 +1,6 @@
 import "dotenv/config";
 import express, { Request, Response } from "express";
 import cors, { CorsOptions } from "cors";
-// body-parser not needed; use express.json()
 import { prisma } from "./prisma.js";
 import grants from "./routes/grants.js";
 import profiles from "./routes/profiles.js";
@@ -24,8 +23,9 @@ const STATIC_ALLOWED = new Set<string>([
   "http://localhost:3000",
 ]);
 
-const ENV_ALLOWED = [process.env.FRONTEND_URL, process.env.APP_URL]
-  .filter(Boolean) as string[];
+const ENV_ALLOWED = [process.env.FRONTEND_URL, process.env.APP_URL].filter(
+  Boolean
+) as string[];
 
 // Helper: check if an origin is allowed
 function isAllowedOrigin(origin: string | undefined): boolean {
@@ -48,11 +48,11 @@ const corsOptions: CorsOptions = {
   credentials: false,
 };
 
-// Handle preflights early
+// Handle preflights early and enable CORS
 app.options("*", cors(corsOptions));
 app.use(cors(corsOptions));
 
-// JSON body parser
+// JSON body parser (replace body-parser)
 app.use(express.json({ limit: "1mb" }));
 
 // Health check + env sanity (doesn't leak secrets)
@@ -72,9 +72,28 @@ app.get("/api/health", async (_req: Request, res: Response) => {
   mustHave.forEach((k) => (envReport[k] = !!process.env[k]));
   optional.forEach((k) => (envReport[k] = !!process.env[k]));
 
-  // quick DB ping
+  // quick DB ping — avoid tagged template to prevent backtick issues
   let db = "ok";
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    // Using Unsafe with a literal string is fine here since there's no user input.
+    await prisma.$queryRawUnsafe("SELECT 1");
   } catch (e: any) {
-    db = `
+    db = `error: ${e?.message || "db failed"}`;
+  }
+
+  res.json({ ok: true, db, env: envReport });
+});
+
+// Mount API
+app.use("/api", grants);
+app.use("/api", profiles);
+
+// Fallback root
+app.get("/", (_req, res) => {
+  res.send("GrantFinder backend is running.");
+});
+
+const port = Number(process.env.PORT || 4000);
+app.listen(port, () => {
+  console.log("API listening on :" + port);
+});
