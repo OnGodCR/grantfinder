@@ -1,37 +1,36 @@
 // frontend/app/api/proxy/grants/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 
-// 1) Read your Railway base URL from env (set on Vercel)
+// 1) Your Railway base URL (set this in Vercel env)
 const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
 
-// 2) Point to the REAL backend route.
-//    If your backend route is /api/internal/grants, change the line below accordingly.
+// 2) Change to /api/internal/grants if that's your real backend path
 const UPSTREAM = `${BASE}/api/grants`;
 
-// Helper: forward a query string to the backend as POST { q }
 async function forwardToBackend(query: string, req: NextRequest) {
-  // (A) If the client already sent Authorization, forward it.
+  // Forward Authorization if client sent one
   let authHeader = req.headers.get('authorization') ?? '';
 
-  // (B) If not, mint a Clerk token server-side and use it.
+  // If missing, mint a Clerk token on the server (for logged-in users)
   if (!authHeader) {
     try {
       const { getToken } = auth();
-      const jwt = await getToken(); // if you use a custom template, do getToken({ template: 'backend' })
+      const jwt = await getToken(); // use getToken({ template: 'backend' }) if you made a custom template
       if (jwt) authHeader = `Bearer ${jwt}`;
     } catch {
-      // No Clerk session available (public page / logged out). That's OK; backend may still 401.
+      // not logged in → backend may 401 and that's okay
     }
   }
 
   const upstream = await fetch(UPSTREAM, {
-    method: 'POST', // <-- change to 'GET' if your backend expects GET
+    method: 'POST',                         // <-- switch to 'GET' if your backend expects GET
     headers: {
       'content-type': 'application/json',
       ...(authHeader ? { authorization: authHeader } : {}),
     },
-    body: JSON.stringify({ q: query ?? '' }), // if you switch to GET upstream, move q into the URL instead
+    body: JSON.stringify({ q: query ?? '' }), // if you switch to GET upstream, put q in the URL and remove body
+    cache: 'no-store',
   });
 
   const text = await upstream.text();
@@ -42,8 +41,7 @@ async function forwardToBackend(query: string, req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const q = searchParams.get('q') ?? '';
+  const q = new URL(req.url).searchParams.get('q') ?? '';
   return forwardToBackend(q, req);
 }
 
@@ -53,11 +51,7 @@ export async function POST(req: NextRequest) {
     const data = await req.json();
     if (typeof data?.q === 'string') q = data.q;
   } catch {}
-
-  if (!q) {
-    const { searchParams } = new URL(req.url);
-    q = searchParams.get('q') ?? '';
-  }
+  if (!q) q = new URL(req.url).searchParams.get('q') ?? '';
 
   return forwardToBackend(q, req);
 }
