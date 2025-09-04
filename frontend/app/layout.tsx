@@ -26,9 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </aside>
 
               {/* Main */}
-              <div className="flex-1">
-                {children}
-              </div>
+              <div className="flex-1">{children}</div>
             </div>
           </div>
         </body>
