@@ -18,7 +18,9 @@ export default function DiscoverPage() {
   const [error, setError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    const trimmed = (s: string) => s?.toLowerCase() ?? '';
+    const trimmed = (s: string | undefined | null) => (s ?? '').toLowerCase();
+    let rows = grants;
+
     let rows = grants;
 
     if (active === 'NSF') rows = rows.filter(g => /nsf|national science foundation/i.test(g.agency || g.source || ''));
