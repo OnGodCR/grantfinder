@@ -42,4 +42,28 @@ export default function DashboardPage() {
   return (
     <main style={{ fontFamily: 'ui-sans-serif, system-ui', padding: 20 }}>
       <h1 style={{ fontSize: 22, marginBottom: 8 }}>Dashboard</h1>
-      <p style={{ marginB
+      <p style={{ marginBottom: 12 }}>
+        Backend: <code>{BASE || '(missing NEXT_PUBLIC_BACKEND_URL)'}</code>
+      </p>
+
+      {!res && <div>Detecting endpoint…</div>}
+      {!!res && (
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+          <div><strong>Call:</strong> <code>{res.method} {res.url}</code></div>
+          <div><strong>Status:</strong> {res.status} • <strong>OK:</strong> {String(res.ok)}</div>
+          {res.error && (
+            <pre style={{ whiteSpace: 'pre-wrap', color: '#b91c1c' }}>
+Error: {res.error}
+            </pre>
+          )}
+          <details style={{ marginTop: 8 }}>
+            <summary>Response Body</summary>
+            <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+{typeof res.body === 'string' ? res.body : JSON.stringify(res.body, null, 2)}
+            </pre>
+          </details>
+        </div>
+      )}
+    </main>
+  );
+}
