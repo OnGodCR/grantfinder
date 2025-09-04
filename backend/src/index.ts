@@ -1,59 +1,52 @@
 import "dotenv/config";
-import express, { Request, Response } from "express";
-import cors, { CorsOptions } from "cors";
+import express, { Request, Response, NextFunction } from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
 import { prisma } from "./prisma.js";
 import grants from "./routes/grants.js";
 import profiles from "./routes/profiles.js";
 
 const app = express();
 
-// If you're behind a proxy (Railway), this helps with correct IP/proto
-app.set("trust proxy", 1);
+/**
+ * CORS
+ * Allow your deployed frontend(s). For now, keep your existing FRONTEND_URL or *.
+ * If you want to be strict, set FRONTEND_URL to your Vercel domain (preview) and prod domain.
+ */
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "*",
+    credentials: false, // we are using Bearer tokens, not cookies
+  })
+);
+
+app.use(bodyParser.json({ limit: "1mb" }));
 
 /**
- * CORS allowlist:
- * - Your custom domain(s)
- * - Local dev
- * - Any Vercel preview subdomain (*.vercel.app)
- * - Optional FRONTEND_URL / APP_URL overrides from env
+ * 🔓 GLOBAL AUTH BYPASS WHEN SKIP_AUTH=1
+ * This runs BEFORE any route/middleware that might 401.
+ * It injects a harmless Bearer token so "presence" checks pass,
+ * and most verifiers will be skipped if you also guard them by SKIP_AUTH.
  */
-const STATIC_ALLOWED = new Set<string>([
-  "https://grantlytic.com",
-  "https://www.grantlytic.com",
-  "http://localhost:3000",
-]);
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  if (process.env.SKIP_AUTH === "1" || process.env.SKIP_AUTH === "true") {
+    if (!req.headers.authorization) {
+      req.headers.authorization = "Bearer dev-token";
+    }
+    (req as any).__skipAuth = true;
+  }
+  next();
+});
 
-const ENV_ALLOWED = [process.env.FRONTEND_URL, process.env.APP_URL].filter(
-  Boolean
-) as string[];
-
-// Helper: check if an origin is allowed
-function isAllowedOrigin(origin: string | undefined): boolean {
-  if (!origin) return true; // allow non-browser tools (curl/postman)
-  if (STATIC_ALLOWED.has(origin)) return true;
-  if (ENV_ALLOWED.includes(origin)) return true;
-  // allow any vercel preview domain
-  if (origin.endsWith(".vercel.app")) return true;
-  return false;
-}
-
-const corsOptions: CorsOptions = {
-  origin(origin, cb) {
-    if (isAllowedOrigin(origin)) return cb(null, true);
-    return cb(new Error("Not allowed by CORS"));
-  },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  // Use cookies only if you actually do cookie-based auth; for Bearer tokens keep false
-  credentials: false,
-};
-
-// Handle preflights early and enable CORS
-app.options("*", cors(corsOptions));
-app.use(cors(corsOptions));
-
-// JSON body parser (replace body-parser)
-app.use(express.json({ limit: "1mb" }));
+/**
+ * (Optional) very light request log to help debug on Railway
+ */
+app.use((req, _res, next) => {
+  if (process.env.LOG_REQUESTS === "1") {
+    console.log(`[in] ${req.method} ${req.path} auth=${!!req.headers.authorization}`);
+  }
+  next();
+});
 
 // Health check + env sanity (doesn't leak secrets)
 app.get("/api/health", async (_req: Request, res: Response) => {
@@ -68,32 +61,39 @@ app.get("/api/health", async (_req: Request, res: Response) => {
     "SKIP_AUTH",
   ];
 
-  const envReport: Record<string, boolean> = {};
+  const envReport: Record<string, boolean | string> = {};
   mustHave.forEach((k) => (envReport[k] = !!process.env[k]));
-  optional.forEach((k) => (envReport[k] = !!process.env[k]));
+  optional.forEach((k) => (envReport[k] = process.env[k] ? true : false));
 
-  // quick DB ping — avoid tagged template to prevent backtick issues
+  // quick DB ping
   let db = "ok";
   try {
-    // Using Unsafe with a literal string is fine here since there's no user input.
-    await prisma.$queryRawUnsafe("SELECT 1");
+    await prisma.$queryRaw`SELECT 1`;
   } catch (e: any) {
     db = `error: ${e?.message || "db failed"}`;
   }
 
-  res.json({ ok: true, db, env: envReport });
+  res.json({
+    ok: true,
+    db,
+    env: envReport,
+    note:
+      process.env.SKIP_AUTH === "1"
+        ? "Auth bypass is ACTIVE (Authorization injected)."
+        : "Auth bypass is OFF.",
+  });
 });
 
-// Mount API
+// Mount API routers (keep your existing route implementations)
 app.use("/api", grants);
 app.use("/api", profiles);
 
-// Fallback root
+// Fallback
 app.get("/", (_req, res) => {
   res.send("GrantFinder backend is running.");
 });
 
 const port = Number(process.env.PORT || 4000);
 app.listen(port, () => {
-  console.log("API listening on :" + port);
+  console.log(`API listening on :${port} (skipAuth=${process.env.SKIP_AUTH || "0"})`);
 });
