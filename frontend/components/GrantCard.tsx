@@ -2,7 +2,18 @@
 import { Grant } from '@/lib/types';
 import { clamp, currency, daysUntil, shortDate } from '@/lib/format';
 
-export default function GrantCard({ grant }: { grant: Grant }) {
+// Accept EITHER { grant: Grant } or a Grant directly (spread props)
+type Props = { grant: Grant } | Grant;
+
+function toGrant(p: Props): Grant {
+  return (typeof (p as any).title !== 'undefined' || typeof (p as any).id !== 'undefined')
+    ? (p as Grant)
+    : (p as { grant: Grant }).grant;
+}
+
+export default function GrantCard(props: Props) {
+  const grant = toGrant(props);
+
   const score = clamp(grant.matchScore ?? 0);
   const days = grant.daysRemaining ?? daysUntil(grant.deadline) ?? undefined;
 
@@ -11,7 +22,9 @@ export default function GrantCard({ grant }: { grant: Grant }) {
       <div className="flex items-start gap-4">
         {/* Title & meta */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-[1.25rem] font-semibold text-white mb-1">{grant.title || 'Untitled Grant'}</h3>
+          <h3 className="text-[1.25rem] font-semibold text-white mb-1">
+            {grant.title || 'Untitled Grant'}
+          </h3>
           <div className="text-sm text-white/70 mb-2">
             {grant.agency || grant.source ? <span className="mr-3">{grant.agency || grant.source}</span> : null}
             {grant.maxFunding !== undefined && <span>Maximum: {currency(grant.maxFunding)}</span>}
