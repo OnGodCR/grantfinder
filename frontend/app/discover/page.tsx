@@ -1,4 +1,6 @@
+// frontend/app/discover/page.tsx
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { useAuth } from '@clerk/nextjs';
 import { useEffect, useMemo, useState } from 'react';
@@ -18,20 +20,13 @@ export default function DiscoverPage() {
   const [error, setError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    // ✅ SAFE: always returns a string
     const trimmed = (s: string | undefined | null) => (s ?? '').toLowerCase();
-
     let rows = grants;
 
-    if (active === 'NSF') {
-      rows = rows.filter(g => /nsf|national science foundation/i.test((g.agency || g.source || '')));
-    } else if (active === 'NIH') {
-      rows = rows.filter(g => /nih|national institutes of health/i.test((g.agency || g.source || '')));
-    } else if (active === 'Foundations') {
-      rows = rows.filter(g => /foundation|trust/i.test((g.agency || g.source || '')));
-    } else if (active === 'Deadline Soon') {
-      rows = rows.filter(g => (g.daysRemaining ?? 9999) <= 14);
-    }
+    if (active === 'NSF') rows = rows.filter(g => /nsf|national science foundation/i.test((g.agency || g.source || '')));
+    else if (active === 'NIH') rows = rows.filter(g => /nih|national institutes of health/i.test((g.agency || g.source || '')));
+    else if (active === 'Foundations') rows = rows.filter(g => /foundation|trust/i.test((g.agency || g.source || '')));
+    else if (active === 'Deadline Soon') rows = rows.filter(g => (g.daysRemaining ?? 9999) <= 14);
 
     if (query.trim()) {
       const q = trimmed(query);
@@ -111,16 +106,12 @@ export default function DiscoverPage() {
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
         {/* Results */}
         <section className="space-y-4">
-          {loading && (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">Loading grants…</div>
-          )}
-          {error && (
-            <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-5 text-red-200">Error: {error}</div>
-          )}
+          {loading && <div className="rounded-2xl border border-white/10 bg-white/5 p-5">Loading grants…</div>}
+          {error && <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-5 text-red-200">Error: {error}</div>}
           {!loading && !error && filtered.length === 0 && (
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">No results. Try a different filter or search.</div>
           )}
-          {filtered.map(g => <GrantCard key={g.id} grant={g} />)}
+          {filtered.map(g => <GrantCard key={String(g.id ?? g.title)} grant={g} />)}
         </section>
 
         {/* Right rail */}
