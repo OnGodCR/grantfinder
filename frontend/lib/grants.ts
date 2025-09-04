@@ -1,46 +1,97 @@
 // frontend/lib/grants.ts
-const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/\/+$/, "");
-const CANDIDATE_PATHS = ["/api/grants", "/api/internal/grants", "/grants", "/api/grants/search"];
-type Hit = { url: string; method: "POST" | "GET" };
+const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '');
 
-function loadCached(): Hit | null {
-  if (typeof window === "undefined") return null;
+type FetchResult = {
+  ok: boolean;
+  status: number;
+  url: string;
+  method: 'POST' | 'GET';
+  body: any;
+  rawText?: string;
+  error?: string;
+};
+
+async function tryPost(url: string, q: string, token?: string): Promise<FetchResult> {
   try {
-    const raw = window.sessionStorage.getItem("grants_endpoint_v1");
-    return raw ? (JSON.parse(raw) as Hit) : null;
-  } catch { return null; }
-}
-function saveCached(hit: Hit) {
-  try { if (typeof window !== "undefined") window.sessionStorage.setItem("grants_endpoint_v1", JSON.stringify(hit)); } catch {}
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (token) headers.authorization = `Bearer ${token}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ q }),
+      // Next 14 fetch defaults are fine; no-cache is OK for dynamic too.
+    });
+
+    const ctype = res.headers.get('content-type') || '';
+    let body: any = null;
+    let rawText: string | undefined;
+
+    if (ctype.includes('application/json')) {
+      body = await res.json().catch(() => null);
+    } else {
+      rawText = await res.text().catch(() => undefined);
+      try { body = rawText ? JSON.parse(rawText) : null; } catch { /* keep rawText */ }
+    }
+
+    const out: FetchResult = {
+      ok: res.ok,
+      status: res.status,
+      url,
+      method: 'POST',
+      body,
+      rawText,
+    };
+    // Helpful console trace
+    // eslint-disable-next-line no-console
+    console.log('[grants] POST', out);
+    return out;
+  } catch (e: any) {
+    const out: FetchResult = {
+      ok: false,
+      status: 0,
+      url,
+      method: 'POST',
+      body: null,
+      error: e?.message || String(e),
+    };
+    // eslint-disable-next-line no-console
+    console.error('[grants] POST error', out);
+    return out;
+  }
 }
 
-async function tryOnce(url: string, method: "POST" | "GET", q: string, token?: string) {
-  const headers: Record<string, string> = { "content-type": "application/json" };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(method === "GET" ? `${url}?q=${encodeURIComponent(q)}` : url, {
-    method, headers, body: method === "POST" ? JSON.stringify({ q }) : undefined, cache: "no-store",
-  });
-  const text = await res.clone().text();
-  let body: any = text; try { body = JSON.parse(text); } catch {}
-  return { ok: res.ok, status: res.status, body };
+/**
+ * Call your backend POST /api/grants. If that 404s, fall back to /api/internal/grants.
+ * Requires NEXT_PUBLIC_BACKEND_URL to be set to your Railway base:
+ *   https://grantfinder-production.up.railway.app
+ */
+export async function fetchGrantsAuto(q: string, token?: string): Promise<FetchResult> {
+  if (!BASE) {
+    const err: FetchResult = {
+      ok: false,
+      status: 0,
+      url: '(missing NEXT_PUBLIC_BACKEND_URL)',
+      method: 'POST',
+      body: null,
+      error: 'NEXT_PUBLIC_BACKEND_URL is not defined in your Vercel env',
+    };
+    console.error('[grants] config error', err);
+    return err;
+  }
+
+  // 1) Try /api/grants
+  const first = await tryPost(`${BASE}/api/grants`, q, token);
+  if (first.ok || first.status !== 404) return first;
+
+  // 2) Fallback to /api/internal/grants
+  const second = await tryPost(`${BASE}/api/internal/grants`, q, token);
+  return second;
 }
 
-export async function fetchGrantsAuto(q: string, token?: string) {
-  const cached = loadCached();
-  if (cached) {
-    const r = await tryOnce(cached.url, cached.method, q, token);
-    if (r.ok) return { ...r, url: cached.url, method: cached.method };
-  }
-  for (const path of CANDIDATE_PATHS) {
-    const url = `${BASE}${path}`;
-    try { const r = await tryOnce(url, "POST", q, token); if (r.ok) { saveCached({ url, method: "POST" }); return { ...r, url, method: "POST" }; } } catch {}
-  }
-  for (const path of CANDIDATE_PATHS) {
-    const url = `${BASE}${path}`;
-    try { const r = await tryOnce(url, "GET", q, token); if (r.ok) { saveCached({ url, method: "GET" }); return { ...r, url, method: "GET" }; } } catch {}
-  }
-  return { ok: false, status: 0, body: { error: "No working grants endpoint found." }, url: `${BASE}${CANDIDATE_PATHS[0]}`, method: "POST" as const };
+/**
+ * Direct single-endpoint version if you know which one works.
+ */
+export async function fetchGrants(q: string, token?: string): Promise<FetchResult> {
+  return fetchGrantsAuto(q, token);
 }
-
-// Back-compat
-export const fetchGrants = fetchGrantsAuto;
