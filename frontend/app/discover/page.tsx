@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useAuth } from '@clerk/nextjs';
 import { useEffect, useMemo, useState } from 'react';
-import { fetchGrants } from '@/lib/grants';
+import { fetchGrantsAuto } from '@/lib/grants';
 import { Grant } from '@/lib/types';
 import GrantCard from '@/components/GrantCard';
 import RightRail from '@/components/RightRail';
@@ -17,10 +17,10 @@ export default function DiscoverPage() {
   const [active, setActive] = useState<string>('NSF');
   const [loading, setLoading] = useState(false);
   const [grants, setGrants] = useState<Grant[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [api, setApi] = useState<{status:number; ok:boolean; url:string; error?:string} | null>(null);
 
   const filtered = useMemo(() => {
-    const trimmed = (s: string | undefined | null) => (s ?? '').toLowerCase();
+    const t = (s?: string | null) => (s ?? '').toLowerCase();
     let rows = grants;
 
     if (active === 'NSF') rows = rows.filter(g => /nsf|national science foundation/i.test((g.agency || g.source || '')));
@@ -29,11 +29,11 @@ export default function DiscoverPage() {
     else if (active === 'Deadline Soon') rows = rows.filter(g => (g.daysRemaining ?? 9999) <= 14);
 
     if (query.trim()) {
-      const q = trimmed(query);
+      const q = t(query);
       rows = rows.filter(g =>
-        trimmed(g.title).includes(q) ||
-        trimmed(g.summary).includes(q) ||
-        (g.tags ?? []).some(t => trimmed(t).includes(q))
+        t(g.title).includes(q) ||
+        t(g.summary).includes(q) ||
+        (g.tags ?? []).some(tag => t(tag).includes(q))
       );
     }
     return rows;
@@ -41,31 +41,34 @@ export default function DiscoverPage() {
 
   useEffect(() => {
     (async () => {
-      setLoading(true); setError(null);
+      setLoading(true);
       try {
         const token = isSignedIn ? await getToken() : undefined;
-        const res = await fetchGrants('', token ?? undefined);
-        if (!res.ok) throw new Error(`Backend ${res.status}`);
+        const res = await fetchGrantsAuto('', token ?? undefined);
+        setApi({ status: res.status, ok: res.ok, url: res.url, error: res.error });
+
+        if (!res.ok) {
+          setGrants([]);
+          return;
+        }
 
         const body = res.body;
-        const items: Grant[] = Array.isArray(body?.grants ?? body)
-          ? (body.grants ?? body).map((r: any, i: number) => ({
-              id: r.id ?? i,
-              title: r.title ?? r.name ?? 'Untitled Grant',
-              summary: r.summary ?? r.description ?? '',
-              agency: r.agency ?? r.source ?? '',
-              source: r.source ?? '',
-              maxFunding: r.maxFunding ?? r.amount ?? r.max_amount,
-              deadline: r.deadline ?? r.due_date ?? r.closeDate,
-              daysRemaining: r.daysRemaining,
-              matchScore: r.matchScore ?? r.score ?? Math.round(Math.random() * 30 + 65),
-              tags: r.tags ?? r.keywords ?? [],
-              url: r.url ?? r.link,
-            }))
-          : [];
+        const arr = Array.isArray(body?.grants ?? body) ? (body.grants ?? body) : [];
+        const items: Grant[] = arr.map((r: any, i: number) => ({
+          id: r.id ?? i,
+          title: r.title ?? r.name ?? 'Untitled Grant',
+          summary: r.summary ?? r.description ?? '',
+          agency: r.agency ?? r.source ?? '',
+          source: r.source ?? '',
+          maxFunding: r.maxFunding ?? r.amount ?? r.max_amount,
+          deadline: r.deadline ?? r.due_date ?? r.closeDate,
+          daysRemaining: r.daysRemaining,
+          matchScore: r.matchScore ?? r.score ?? Math.round(Math.random() * 30 + 65),
+          tags: r.tags ?? r.keywords ?? [],
+          url: r.url ?? r.link,
+        }));
+
         setGrants(items);
-      } catch (e: any) {
-        setError(e?.message || String(e));
       } finally {
         setLoading(false);
       }
@@ -107,10 +110,26 @@ export default function DiscoverPage() {
         {/* Results */}
         <section className="space-y-4">
           {loading && <div className="rounded-2xl border border-white/10 bg-white/5 p-5">Loading grants…</div>}
-          {error && <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-5 text-red-200">Error: {error}</div>}
-          {!loading && !error && filtered.length === 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">No results. Try a different filter or search.</div>
+
+          {!loading && filtered.length === 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className="font-medium mb-1">No results. Try a different filter or search.</div>
+              {/* Debug strip */}
+              {api && (
+                <div className="mt-3 text-sm text-white/60">
+                  <div><span className="text-white/70">Backend:</span> <code>{api.url}</code></div>
+                  <div><span className="text-white/70">Status:</span> {api.status} • <span className="text-white/70">OK:</span> {String(api.ok)}</div>
+                  {api.error && <div className="text-red-300">Error: {api.error}</div>}
+                  {!process.env.NEXT_PUBLIC_BACKEND_URL && (
+                    <div className="text-amber-300 mt-1">
+                      Warning: NEXT_PUBLIC_BACKEND_URL is not set for this deployment.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
+
           {filtered.map(g => <GrantCard key={String(g.id ?? g.title)} grant={g} />)}
         </section>
 
