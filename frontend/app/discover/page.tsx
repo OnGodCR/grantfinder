@@ -18,15 +18,20 @@ export default function DiscoverPage() {
   const [error, setError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
+    // ✅ SAFE: always returns a string
     const trimmed = (s: string | undefined | null) => (s ?? '').toLowerCase();
-    let rows = grants;
 
     let rows = grants;
 
-    if (active === 'NSF') rows = rows.filter(g => /nsf|national science foundation/i.test(g.agency || g.source || ''));
-    else if (active === 'NIH') rows = rows.filter(g => /nih|national institutes of health/i.test(g.agency || g.source || ''));
-    else if (active === 'Foundations') rows = rows.filter(g => /foundation|trust/i.test(g.agency || g.source || ''));
-    else if (active === 'Deadline Soon') rows = rows.filter(g => (g.daysRemaining ?? 9999) <= 14);
+    if (active === 'NSF') {
+      rows = rows.filter(g => /nsf|national science foundation/i.test((g.agency || g.source || '')));
+    } else if (active === 'NIH') {
+      rows = rows.filter(g => /nih|national institutes of health/i.test((g.agency || g.source || '')));
+    } else if (active === 'Foundations') {
+      rows = rows.filter(g => /foundation|trust/i.test((g.agency || g.source || '')));
+    } else if (active === 'Deadline Soon') {
+      rows = rows.filter(g => (g.daysRemaining ?? 9999) <= 14);
+    }
 
     if (query.trim()) {
       const q = trimmed(query);
@@ -44,10 +49,9 @@ export default function DiscoverPage() {
       setLoading(true); setError(null);
       try {
         const token = isSignedIn ? await getToken() : undefined;
-        // Empty search to start; change to query if your API supports it
         const res = await fetchGrants('', token ?? undefined);
         if (!res.ok) throw new Error(`Backend ${res.status}`);
-        // Normalize your API payload into Grant[]
+
         const body = res.body;
         const items: Grant[] = Array.isArray(body?.grants ?? body)
           ? (body.grants ?? body).map((r: any, i: number) => ({
@@ -59,7 +63,7 @@ export default function DiscoverPage() {
               maxFunding: r.maxFunding ?? r.amount ?? r.max_amount,
               deadline: r.deadline ?? r.due_date ?? r.closeDate,
               daysRemaining: r.daysRemaining,
-              matchScore: r.matchScore ?? r.score ?? Math.round(Math.random() * 30 + 65), // fallback nice score
+              matchScore: r.matchScore ?? r.score ?? Math.round(Math.random() * 30 + 65),
               tags: r.tags ?? r.keywords ?? [],
               url: r.url ?? r.link,
             }))
