@@ -3,16 +3,49 @@ import { Grant } from '@/lib/types';
 import { clamp, currency, daysUntil, shortDate } from '@/lib/format';
 
 // Accept EITHER { grant: Grant } or a Grant directly (spread props)
-type Props = { grant: Grant } | Grant;
+type Props = { grant: Grant } | (Partial<Grant> & { title: string; score?: number });
 
-function toGrant(p: Props): Grant {
-  return (typeof (p as any).title !== 'undefined' || typeof (p as any).id !== 'undefined')
-    ? (p as Grant)
-    : (p as { grant: Grant }).grant;
+function normalize(p: Props): Grant {
+  // If passed as { grant }
+  if ((p as any).grant) {
+    const g = (p as { grant: Grant }).grant;
+    return {
+      ...g,
+      matchScore: typeof g.matchScore === 'number' ? g.matchScore : undefined,
+    };
+  }
+
+  // Passed as spread props like { title, summary, score }
+  const direct = p as any;
+  const matchScore =
+    typeof direct.matchScore === 'number'
+      ? direct.matchScore
+      : typeof direct.score === 'number'
+      ? direct.score
+      : undefined;
+
+  const id =
+    direct.id ??
+    (typeof direct.title === 'string' ? direct.title : undefined);
+
+  const g: Grant = {
+    id,
+    title: direct.title ?? 'Untitled Grant',
+    summary: direct.summary,
+    agency: direct.agency,
+    source: direct.source,
+    maxFunding: direct.maxFunding,
+    deadline: direct.deadline,
+    daysRemaining: direct.daysRemaining,
+    matchScore,
+    tags: direct.tags,
+    url: direct.url,
+  };
+  return g;
 }
 
 export default function GrantCard(props: Props) {
-  const grant = toGrant(props);
+  const grant = normalize(props);
 
   const score = clamp(grant.matchScore ?? 0);
   const days = grant.daysRemaining ?? daysUntil(grant.deadline) ?? undefined;
@@ -26,8 +59,12 @@ export default function GrantCard(props: Props) {
             {grant.title || 'Untitled Grant'}
           </h3>
           <div className="text-sm text-white/70 mb-2">
-            {grant.agency || grant.source ? <span className="mr-3">{grant.agency || grant.source}</span> : null}
-            {grant.maxFunding !== undefined && <span>Maximum: {currency(grant.maxFunding)}</span>}
+            {grant.agency || grant.source ? (
+              <span className="mr-3">{grant.agency || grant.source}</span>
+            ) : null}
+            {grant.maxFunding !== undefined && (
+              <span>Maximum: {currency(grant.maxFunding)}</span>
+            )}
           </div>
           {grant.summary && (
             <p className="text-white/70 line-clamp-2">{grant.summary}</p>
@@ -36,17 +73,34 @@ export default function GrantCard(props: Props) {
           {grant.tags?.length ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {grant.tags.slice(0, 6).map((t, i) => (
-                <span key={i} className="text-xs px-2 py-1 rounded-full bg-white/10 text-white/80">{t}</span>
+                <span
+                  key={i}
+                  className="text-xs px-2 py-1 rounded-full bg-white/10 text-white/80"
+                >
+                  {t}
+                </span>
               ))}
             </div>
           ) : null}
           {/* Footer */}
           <div className="mt-4 flex items-center gap-4 text-sm text-white/70">
             <span className="inline-flex items-center gap-1">
-              📅 Deadline: <strong className="text-white ml-1">{grant.deadline ? shortDate(grant.deadline) : (days ? `${days} days` : '—')}</strong>
+              📅 Deadline:{' '}
+              <strong className="text-white ml-1">
+                {grant.deadline
+                  ? shortDate(grant.deadline)
+                  : days
+                  ? `${days} days`
+                  : '—'}
+              </strong>
             </span>
             {grant.url && (
-              <a href={grant.url} target="_blank" rel="noreferrer" className="text-cyan-300 hover:text-cyan-200 underline underline-offset-4">
+              <a
+                href={grant.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-cyan-300 hover:text-cyan-200 underline underline-offset-4"
+              >
                 View details ↗
               </a>
             )}
