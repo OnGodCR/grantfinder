@@ -1,7 +1,7 @@
 // frontend/lib/grants.ts
 const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '');
 
-type FetchResult = {
+export type FetchResult = {
   ok: boolean;
   status: number;
   url: string;
@@ -35,11 +35,17 @@ export async function fetchGrants(q: string, token?: string): Promise<FetchResul
     }
 
     const out: FetchResult = { ok: res.ok, status: res.status, url, method: 'POST', body, rawText };
+    // Helpful for debugging in preview:
+    // eslint-disable-next-line no-console
     console.log('[grants] POST', out);
     return out;
   } catch (e: any) {
     const out: FetchResult = { ok: false, status: 0, url, method: 'POST', body: null, error: e?.message || String(e) };
+    // eslint-disable-next-line no-console
     console.error('[grants] POST error', out);
     return out;
   }
 }
+
+// Back-compat alias so old imports keep working:
+export const fetchGrantsAuto = fetchGrants;
