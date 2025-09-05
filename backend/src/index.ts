@@ -1,57 +1,65 @@
-// CORS — allow prod domain and vercel previews via env FRONTEND_ORIGINS
-import cors from "cors";
+// --- CORS BEGIN (drop-in) ---
+/**
+ * Allow your prod domain + Vercel previews.
+ * Set FRONTEND_ORIGINS in Railway like:
+ *   FRONTEND_ORIGINS=https://grantlytic.com, https://grantfinder-abc.vercel.app, https://*.vercel.app
+ */
+const RAW_ORIGINS = (process.env.FRONTEND_ORIGINS ?? '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
 
-// Turn "a, b, c" into ["a","b","c"]
-function parseOrigins(input: string | undefined): string[] {
-  if (!input) return [];
-  return input
-    .split(",")
-    .map(s => s.trim())
-    .filter(Boolean);
-}
-
-// Support exact match and simple wildcard like https://*.vercel.app
-function originMatches(allowed: string, origin: string): boolean {
-  if (allowed === "*") return true;
-  if (!allowed.includes("*")) return allowed === origin;
-  // wildcard: only at a single label position, e.g. https://*.vercel.app
-  const [schemeHost, ...rest] = allowed.split("://");
-  const scheme = rest.length ? schemeHost : "https";
-  const hostPattern = rest.length ? rest.join("://") : schemeHost; // when no scheme provided
-  const url = new URL(origin);
-  if (scheme !== "https" && scheme !== "http") {
-    // if no scheme in allowed, just compare host with wildcard
-    return wildcardHostMatch(hostPattern, url.host);
+// simple wildcard host match like *.vercel.app
+function hostMatches(pattern: string, host: string): boolean {
+  if (pattern.includes('*')) {
+    const esc = pattern.replace(/\./g, '\\.').replace(/\*/g, '.*');
+    return new RegExp(`^${esc}$`, 'i').test(host);
   }
-  return wildcardHostMatch(hostPattern, url.host);
+  return pattern === host;
 }
 
-function wildcardHostMatch(pattern: string, host: string): boolean {
-  if (!pattern.includes("*")) return pattern === host;
-  // pattern like *.vercel.app or grantfinder-*.example.com
-  const esc = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*");
-  const re = new RegExp(`^${esc}$`, "i");
-  return re.test(host);
+function isAllowedOrigin(origin?: string): boolean {
+  if (!origin) return true; // allow server-to-server/no-origin
+  if (RAW_ORIGINS.length === 0) return true; // permissive dev default
+  try {
+    const u = new URL(origin);
+    return RAW_ORIGINS.some(o => {
+      // allow raw host patterns without scheme (e.g., *.vercel.app)
+      if (!o.startsWith('http')) {
+        return hostMatches(o.toLowerCase(), u.host.toLowerCase());
+      }
+      const ao = new URL(o);
+      return ao.protocol === u.protocol && hostMatches(ao.host.toLowerCase(), u.host.toLowerCase());
+    });
+  } catch {
+    return false;
+  }
 }
 
-const allowedOrigins = parseOrigins(process.env.FRONTEND_ORIGINS);
+app.use((req, res, next) => {
+  const origin = req.headers.origin as string | undefined;
+  const allowed = isAllowedOrigin(origin);
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      // Server-to-server or curl with no Origin → allow
-      if (!origin) return cb(null, true);
-      // If no env configured, be permissive (dev)
-      if (allowedOrigins.length === 0) return cb(null, true);
-      const ok = allowedOrigins.some(allowed => originMatches(allowed, origin));
-      return ok ? cb(null, true) : cb(new Error(`CORS: ${origin} not allowed`));
-    },
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: false,
-    optionsSuccessStatus: 204,
-  })
-);
+  // Helpful debug
+  if (process.env.LOG_REQUESTS === '1') {
+    console.log(`[CORS] ${req.method} ${req.path} origin=${origin ?? '(none)'} allowed=${allowed}`);
+  }
 
-// Let Express answer preflights quickly (optional; cors handles it, but this helps)
-app.options("*", cors());
+  // Always vary on Origin for caches
+  res.setHeader('Vary', 'Origin');
+
+  if (allowed && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    // No cookies -> credentials not needed
+  }
+
+  // Short-circuit preflight cleanly
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+// --- CORS END ---
