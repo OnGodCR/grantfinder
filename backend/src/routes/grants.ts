@@ -3,10 +3,7 @@ import { Router, Request, Response, NextFunction } from "express";
 
 const router = Router();
 
-/**
- * Bypass auth when SKIP_AUTH is set.
- * If SKIP_AUTH is not set, require a Bearer token (you can swap this for real Clerk verification later).
- */
+/** Auth: bypass when SKIP_AUTH is set; otherwise require a Bearer token */
 function requireAuthOrSkip(req: Request, res: Response, next: NextFunction) {
   if (process.env.SKIP_AUTH === "1" || process.env.SKIP_AUTH === "true") {
     return next();
@@ -18,35 +15,86 @@ function requireAuthOrSkip(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
-/**
- * POST /api/internal/grants
- * (this router is mounted at /api in index.ts)
- *
- * TEMP: returns an empty list so you can verify 200s in the UI.
- * Replace the inside of the handler with your real search once 401s are gone.
- */
-router.post(
-  "/internal/grants",
-  requireAuthOrSkip,
-  async (req: Request, res: Response) => {
-    try {
-      const q = typeof req.body?.q === "string" ? req.body.q.trim() : "";
+/** (Optional) small helper to show demo cards while developing UI */
+function demoGrants(q: string) {
+  const base = [
+    {
+      id: "demo-1",
+      title: "AI for Social Impact Micro-grant",
+      summary:
+        "Supports early AI projects that benefit nonprofits and local communities.",
+      deadline: "2025-10-15",
+      amount: 5000,
+      tags: ["AI", "Nonprofit", "Prototype"],
+      score: 0.92,
+      sourceUrl: "https://example.org/grants/ai-social-impact",
+    },
+    {
+      id: "demo-2",
+      title: "Innovation Seed Fund",
+      summary:
+        "Seed funding for data/AI pilots led by small teams and founders.",
+      deadline: "2025-11-01",
+      amount: 10000,
+      tags: ["Startup", "Data", "Pilot"],
+      score: 0.87,
+      sourceUrl: "https://example.org/grants/innovation-seed",
+    },
+    {
+      id: "demo-3",
+      title: "Civic Tech Challenge",
+      summary:
+        "Grants for tools that improve public services or accessibility.",
+      deadline: "2025-12-01",
+      amount: 20000,
+      tags: ["Civic Tech", "Accessibility"],
+      score: 0.84,
+      sourceUrl: "https://example.org/grants/civic-tech",
+    },
+  ];
+  // Tiny filter so searches aren’t confusing
+  if (!q) return base;
+  const ql = q.toLowerCase();
+  return base.filter(
+    (g) =>
+      g.title.toLowerCase().includes(ql) ||
+      g.summary.toLowerCase().includes(ql) ||
+      (g.tags || []).some((t) => t.toLowerCase().includes(ql))
+  );
+}
 
-      // TODO: plug in your real search logic here and return real grants.
-      // Example response shape (keep keys stable for the UI):
-      return res.json({
-        ok: true,
-        query: q,
-        items: [], // ← replace with real results later
-        count: 0,
-      });
-    } catch (err: any) {
-      console.error("grants route error:", err?.message || err);
-      return res
-        .status(500)
-        .json({ error: err?.message || "server error in /internal/grants" });
-    }
+/** Single handler used by both routes */
+async function handler(req: Request, res: Response) {
+  try {
+    const q = typeof req.body?.q === "string" ? req.body.q.trim() : "";
+
+    // TODO: replace this block with your real search/DB logic.
+    // While developing UI, you can set SEED_FAKE_GRANTS=1 on Railway
+    // to return demo results instead of an empty list.
+    const useDemo = process.env.SEED_FAKE_GRANTS === "1" || process.env.SEED_FAKE_GRANTS === "true";
+    const items = useDemo ? demoGrants(q) : [];
+
+    res.setHeader("content-type", "application/json");
+    return res.json({
+      ok: true,
+      query: q,
+      items,              // array of grants
+      count: items.length // number rendered by UI
+    });
+  } catch (err: any) {
+    console.error("grants route error:", err?.message || err);
+    return res
+      .status(500)
+      .json({ error: err?.message || "server error in /grants" });
   }
-);
+}
+
+/**
+ * Endpoints this router exposes (mounted at /api in index.ts):
+ *   POST /api/internal/grants
+ *   POST /api/grants
+ */
+router.post("/internal/grants", requireAuthOrSkip, handler);
+router.post("/grants", requireAuthOrSkip, handler);
 
 export default router;
