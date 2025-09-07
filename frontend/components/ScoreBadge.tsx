@@ -1,18 +1,17 @@
 // frontend/components/ScoreBadge.tsx
-"use client";
-
 export default function ScoreBadge({ score }: { score?: number }) {
-  const s = typeof score === "number" ? Math.max(0, Math.min(100, score)) : null;
+  const s = Math.max(0, Math.min(100, Number.isFinite(score!) ? Number(score) : 0));
   return (
-    <div
-      className="shrink-0 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center"
-      title={s != null ? `${s}% match` : "No score"}
+    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium ring-1 ring-inset"
+      style={{
+        // greenish at 100, amber mid, red low — simple hue ramp
+        background: `hsl(${(s / 100) * 120}, 70%, 95%)`,
+        color: `hsl(${(s / 100) * 120}, 60%, 30%)`,
+        borderColor: `hsl(${(s / 100) * 120}, 50%, 60%)`,
+      }}
+      title={`Match score: ${s}%`}
     >
-      {s != null ? (
-        <span className="text-sm font-semibold">{s}%</span>
-      ) : (
-        <span className="text-sm text-white/60">—</span>
-      )}
-    </div>
+      {s}%
+    </span>
   );
 }
