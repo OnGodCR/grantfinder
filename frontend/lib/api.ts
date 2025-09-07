@@ -1,52 +1,41 @@
 // frontend/lib/api.ts
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE?.replace(/\/+$/, "") ||
-  "http://localhost:4000/api";
-
-const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN || "";
-
-function jsonHeaders(): HeadersInit {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
-  if (API_TOKEN) h.Authorization = `Bearer ${API_TOKEN}`;
-  return h;
-}
-
-export type GrantItem = {
-  id: string;
-  title: string;
-  summary: string;
-  url: string | null;
-  agency: string | null;
-  deadline: string | null;
-  currency: string | null;
-  fundingMin: number | null;
-  fundingMax: number | null;
-  matchScore?: number | null; // if you added matching on backend
-};
-
-export async function fetchGrants(params: {
+export async function fetchGrants({
+  q = "",
+  limit = 24,
+  offset = 0,
+  clerkId,
+  token,
+}: {
   q?: string;
   limit?: number;
   offset?: number;
-}): Promise<{ items: GrantItem[]; count: number }> {
-  const body = {
-    q: params.q ?? "",
-    limit: params.limit ?? 24,
-    offset: params.offset ?? 0,
-  };
+  clerkId?: string;
+  token?: string; // backend API token
+}) {
+  const base = process.env.NEXT_PUBLIC_API_BASE || "";
+  const url = `${base}/internal/grants${clerkId ? `?clerkId=${encodeURIComponent(clerkId)}` : ""}`;
 
-  const resp = await fetch(`${API_BASE}/internal/grants`, {
+  const res = await fetch(url, {
     method: "POST",
-    headers: jsonHeaders(),
-    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ q, limit, offset }),
+    // Ensure no caching issues
+    cache: "no-store",
   });
 
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    throw new Error(`fetchGrants failed: ${resp.status}  ${text}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`fetchGrants failed: ${res.status}  ${body}`);
   }
+  const data = await res.json();
 
-  const data = await resp.json();
-  return { items: data.items ?? [], count: data.count ?? 0 };
+  // Normalize: guarantee matchScore exists
+  const items = Array.isArray(data?.items) ? data.items : [];
+  for (const it of items) {
+    if (typeof it.matchScore !== "number") it.matchScore = 0;
+  }
+  return { ...data, items };
 }
