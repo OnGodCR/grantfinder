@@ -163,3 +163,33 @@ model Match {
   user      User   @relation(fields: [userId], references: [id])
   grant     Grant  @relation(fields: [grantId], references: [id])
 }
+
+model UserProfile {
+  id                 String   @id @default(cuid())
+  clerkId            String   @unique
+
+  // Section 1
+  department         String?
+  position           String?
+
+  // Section 2
+  researchAreas      String[] @db.Text[]
+  keywords           String[] @db.Text[]
+  fundingCategories  String[] @db.Text[]
+
+  // Section 3
+  preferredSources   String[] @db.Text[]
+  fundingLevel       String?
+  projectDuration    String?
+  deadlineFirst      Boolean  @default(false)
+
+  // Section 4
+  alertFrequency     String?
+  notificationMethod String?
+
+  // ML
+  embedding          Json?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
