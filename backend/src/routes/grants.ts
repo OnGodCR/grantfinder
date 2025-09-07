@@ -1,64 +1,54 @@
 // backend/src/routes/grants.ts
-import { Router, Request, Response, NextFunction } from "express";
+import { Router, Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { requireAuthOrSkip } from "../middleware/auth.js";
 
 const router = Router();
 
-function requireInternalToken(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers["x-internal-token"];
-  if (!token || token !== process.env.INTERNAL_API_TOKEN) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  return next();
-}
-
-/**
- * Insert or update a grant (used by scraper)
- */
-router.post("/internal/grants", requireInternalToken, async (req: Request, res: Response) => {
+router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Response) => {
   try {
-    const data = req.body;
+    const q = (req.body?.q ?? "").toString().trim();
+    const limit = Math.min(Math.max(Number(req.body?.limit ?? 24), 1), 100);
+    const offset = Math.max(Number(req.body?.offset ?? 0), 0);
 
-    if (!data.title || !data.source) {
-      return res.status(400).json({ error: "Missing required fields (title, source)" });
-    }
+    const where: Prisma.GrantWhereInput = q
+      ? {
+          OR: [
+            { title: { contains: q, mode: Prisma.QueryMode.insensitive } },
+            { summary: { contains: q, mode: Prisma.QueryMode.insensitive } },
+            { description: { contains: q, mode: Prisma.QueryMode.insensitive } },
+          ],
+        }
+      : {};
 
-    const grant = await prisma.grant.upsert({
-      where: {
-        source_sourceId: {
-          source: data.source,
-          sourceId: data.sourceId ?? data.url ?? "unknown",
-        },
-      },
-      update: {
-        title: data.title,
-        description: data.description,
-        url: data.url,
-        deadline: data.deadline ? new Date(data.deadline) : null,
-        fundingMin: data.fundingMin,
-        fundingMax: data.fundingMax,
-        currency: data.currency,
-        eligibility: data.eligibility,
-        updatedAt: new Date(),
-      },
-      create: {
-        source: data.source,
-        sourceId: data.sourceId ?? data.url ?? "unknown",
-        url: data.url,
-        title: data.title,
-        description: data.description,
-        deadline: data.deadline ? new Date(data.deadline) : null,
-        fundingMin: data.fundingMin,
-        fundingMax: data.fundingMax,
-        currency: data.currency,
-        eligibility: data.eligibility,
-      },
-    });
+    const [rows, count] = await Promise.all([
+      prisma.grant.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+        include: { agency: { select: { id: true, name: true, url: true } } },
+      }),
+      prisma.grant.count({ where }),
+    ]);
 
-    return res.json({ ok: true, id: grant.id });
+    const items = rows.map((g) => ({
+      id: g.id,
+      title: g.title,
+      summary: g.summary || g.description?.slice(0, 280) || "",
+      url: g.url || g.agency?.url || null,
+      agency: g.agency?.name ?? null,
+      deadline: g.deadline,
+      currency: g.currency,
+      fundingMin: g.fundingMin,
+      fundingMax: g.fundingMax,
+    }));
+
+    return res.json({ ok: true, query: q, items, grants: items, count });
   } catch (err: any) {
-    console.error("Grant insert failed", err);
-    return res.status(500).json({ error: "Failed to insert grant" });
+    console.error("grants route error:", err?.message || err);
+    return res.status(500).json({ ok: false, error: "server error in /internal/grants" });
   }
 });
 
