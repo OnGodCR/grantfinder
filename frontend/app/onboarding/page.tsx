@@ -41,10 +41,16 @@ export default function OnboardingPage() {
     (async () => {
       try {
         const data = await getMyPreferences(clerkId);
-        if (data.exists) {
-          window.location.replace("/discover");
-          return;
-        }
+        // treat any non-null, non-empty object OR explicit `exists: true` as “has prefs”
+        const hasPrefs =
+          !!data && (("exists" in (data as any) && (data as any).exists === true) ||
+             Object.keys(data as Record<string, any>).length > 0);
+
+if (hasPrefs) {
+  window.location.replace("/discover");
+  return;
+}
+
       } finally { setLoading(false); }
     })();
   }, [isLoaded, user]);
