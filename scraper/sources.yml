@@ -1,12 +1,16 @@
 feeds:
-  - name: "NSF"
+  # Existing RSS
+  - name: "NSF Funding"
+    type: rss
     url: "https://www.nsf.gov/rss/rss_www_funding.xml"
-    category: "NSF Funding"
-  - name: "NIH"
-    url: "https://grants.nih.gov/grants/guide/WeeklyIndex.cfm?RSSFeed=FundingOpportunities"
-    category: "NIH Funding"
+    limit: 100
 
-  # Broad discovery via web search
+  - name: "NIH Funding"
+    type: rss
+    url: "https://grants.nih.gov/grants/guide/WeeklyIndex.cfm?RSSFeed=FundingOpportunities"
+    limit: 100
+
+  # Broad web discovery (uses SerpAPI or Bing)
   - name: "Global grant discovery"
     type: search
     queries:
@@ -17,7 +21,7 @@ feeds:
       - 'site:.int (grant OR funding) (apply OR application)'
     max_results_per_query: 50
     same_host_only: false
-    include_patterns: ["/grant", "/funding", "/opportunit", "/rfp", "/apply", "/nofo", "/foa"]
+    include_patterns: ["/grant", "/fund", "/opportunit", "/rfp", "/apply", "/nofo", "/foa"]
     rules:
       title: { css: "h1, h2" }
       description: { css: "main, article, .content" }
