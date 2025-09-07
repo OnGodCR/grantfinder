@@ -164,10 +164,8 @@ model Match {
   grant     Grant  @relation(fields: [grantId], references: [id])
 }
 
-/**
- * New table used by onboarding.
- * NOTE: Array fields are plain Postgres text[] — DO NOT add @db.Text[] (that caused P1012).
- */
+// New table used by onboarding.
+// NOTE: Array fields are plain Postgres text[] — DO NOT add @db.Text[].
 model UserProfile {
   id                 String   @id @default(cuid())
   clerkId            String   @unique
