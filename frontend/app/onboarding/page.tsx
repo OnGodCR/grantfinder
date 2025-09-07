@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { getMyPreferences, saveMyPreferences, PreferencesPayload } from "@/lib/me";
+import {
+  getMyPreferences,
+  saveMyPreferences,
+  PreferencesPayload,
+} from "@/lib/me";
 
 const DEPARTMENTS = ["Engineering", "Medicine", "Arts & Sciences", "Education", "Business", "Other"];
 const POSITIONS = ["Faculty", "Postdoc", "Research Staff", "Graduate Student", "Admin", "Other"];
@@ -41,19 +45,18 @@ export default function OnboardingPage() {
     }
     const clerkId = user.id;
     setForm((f) => ({ ...f, clerkId }));
+
     (async () => {
       try {
-        const data = await getMyPreferences(clerkId);
-
-        const hasPrefs =
-          !!data &&
-          (("exists" in (data as any) && (data as any).exists === true) ||
-            Object.keys(data as Record<string, any>).length > 0);
-
-        if (hasPrefs) {
+        const resp = await getMyPreferences(clerkId);
+        // safe check for existence flag
+        if (resp?.exists) {
+          // already onboarded – go to discover
           window.location.replace("/discover");
           return;
         }
+      } catch {
+        // ignore and show the form
       } finally {
         setLoading(false);
       }
@@ -62,15 +65,18 @@ export default function OnboardingPage() {
 
   function toggleArr(key: keyof PreferencesPayload, val: string) {
     setForm((f) => {
-      const cur = new Set([...(f[key] as string[] || [])]);
+      const cur = new Set([...(Array.isArray(f[key]) ? (f[key] as string[]) : [])]);
       cur.has(val) ? cur.delete(val) : cur.add(val);
-      return { ...f, [key]: Array.from(cur) };
+      return { ...f, [key]: Array.from(cur) as any };
     });
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.clerkId) return alert("Please sign in first.");
+    if (!form.clerkId) {
+      alert("Please sign in first.");
+      return;
+    }
     setSaving(true);
     try {
       await saveMyPreferences(form);
@@ -90,9 +96,7 @@ export default function OnboardingPage() {
     <main className="max-w-3xl mx-auto p-6 space-y-8">
       <header>
         <h1 className="text-3xl font-semibold">Tell us about your work</h1>
-        <p className="text-white/60 mt-1">
-          We’ll personalize grants based on your answers. Takes ~60 seconds.
-        </p>
+        <p className="text-white/60 mt-1">We’ll personalize grants based on your answers. Takes ~60 seconds.</p>
       </header>
 
       <form className="space-y-8" onSubmit={onSubmit}>
