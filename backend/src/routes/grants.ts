@@ -32,7 +32,6 @@ async function loadPrefsByClerkId(clerkId: string) {
   for (const name of DEFAULT_PREFS_MODELS) {
     const model = (prisma as any)[name];
     if (!model) continue;
-
     try {
       if (typeof model.findUnique === "function") {
         const found = await model.findUnique({ where: { clerkId } });
@@ -42,9 +41,7 @@ async function loadPrefsByClerkId(clerkId: string) {
         const found = await model.findFirst({ where: { clerkId } });
         if (found) return { record: found, sourceModel: name };
       }
-    } catch {
-      // ignore and try next
-    }
+    } catch {}
   }
   return { record: null, sourceModel: null };
 }
@@ -84,7 +81,6 @@ function tokensFromPrefs(prefs: any): string[] {
   const add = (v: any) => bucket.push(...smartSplit(v));
   const addStr = (v: any) => { if (typeof v === "string" && v.trim()) bucket.push(v); };
 
-  // Common fields (adapt freely)
   addStr(prefs.orgType);
   addStr(prefs.locationState);
   addStr(prefs.locationCountry);
@@ -145,33 +141,24 @@ function pct01(x: number): number {
 function computeScore(grant: any, profileTokens: string[]): number {
   const text = grantText(grant);
   const recall = contentRecall(profileTokens, text);
-
   let heur = 0;
   const hasNonprofit = /\bnon[-\s]?profit\b/i.test(text);
   const hasStartup = /\bstart[-\s]?up\b|\bstartup\b/i.test(text);
   const hasResearch = /\bresearch\b/i.test(text);
-
   const hints = [
     profileTokens.includes("nonprofit") && hasNonprofit,
     profileTokens.includes("startup") && hasStartup,
     profileTokens.includes("research") && hasResearch,
   ].filter(Boolean).length;
-
   if (hints > 0) heur = Math.min(0.1 * hints, 0.3);
-
   const score01 = 0.7 * recall + 0.3 * heur;
   return pct01(score01);
 }
 
-/** -----------------------------------------------------------------------
- * INSERT/UPSERT endpoint (used by the scraper)
- * POST /api/internal/grants   with header: x-internal-token: <token>
- * Body shape matches your scraper payload (source, sourceId, url, title, ...)
- * ----------------------------------------------------------------------*/
+/** =====================  INTERNAL: INSERT / UPSERT  ===================== */
 router.post("/internal/grants", requireInternalToken, async (req: Request, res: Response) => {
   try {
     const data = req.body || {};
-
     if (!data.title || !data.source) {
       return res.status(400).json({ error: "Missing required fields: title, source" });
     }
@@ -180,7 +167,6 @@ router.post("/internal/grants", requireInternalToken, async (req: Request, res: 
       where: {
         source_sourceId: {
           source: data.source,
-          // fallbacks so duplicates consolidate: prefer sourceId, else URL, else "unknown"
           sourceId: data.sourceId ?? data.url ?? "unknown",
         },
       },
@@ -216,13 +202,60 @@ router.post("/internal/grants", requireInternalToken, async (req: Request, res: 
   }
 });
 
-/** -----------------------------------------------------------------------
- * SEARCH endpoint (what your file previously did)
- * moved to: POST /api/internal/grants/search
- * ----------------------------------------------------------------------*/
+/** =====================  PUBLIC: SIMPLE SEARCH/LIST  =====================
+ * POST /api/grants  (auth optional via SKIP_AUTH)
+ * Body: { q?: string, limit?: number, offset?: number }
+ * Returns: { ok, count, items: [...] }
+ */
+router.post("/grants", requireAuthOrSkip, async (req: Request, res: Response) => {
+  try {
+    const q = (req.body?.q ?? "").toString().trim();
+    const limit = Math.min(Math.max(Number(req.body?.limit ?? 24), 1), 100);
+    const offset = Math.max(Number(req.body?.offset ?? 0), 0);
+
+    const where: Prisma.GrantWhereInput = q
+      ? {
+          OR: [
+            { title: { contains: q, mode: Prisma.QueryMode.insensitive } },
+            { summary: { contains: q, mode: Prisma.QueryMode.insensitive } },
+            { description: { contains: q, mode: Prisma.QueryMode.insensitive } },
+          ],
+        }
+      : {};
+
+    const [rows, count] = await Promise.all([
+      prisma.grant.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+        include: { agency: { select: { id: true, name: true, url: true } } },
+      }),
+      prisma.grant.count({ where }),
+    ]);
+
+    const items = rows.map((g) => ({
+      id: g.id,
+      title: g.title,
+      summary: g.summary || g.description?.slice(0, 280) || "",
+      url: g.url || g.agency?.url || null,
+      agency: g.agency?.name ?? null,
+      deadline: g.deadline,
+      currency: g.currency,
+      fundingMin: g.fundingMin,
+      fundingMax: g.fundingMax,
+    }));
+
+    return res.json({ ok: true, count, items });
+  } catch (err: any) {
+    console.error("grants route error:", err?.message || err);
+    return res.status(500).json({ ok: false, error: "server error in /grants" });
+  }
+});
+
+/** =====================  POWER SEARCH (kept)  ===================== */
 router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, res: Response) => {
   const debug = process.env.DEBUG_SCORES === "1";
-
   try {
     const q = (req.body?.q ?? "").toString().trim();
     const limit = Math.min(Math.max(Number(req.body?.limit ?? 24), 1), 100);
@@ -239,7 +272,6 @@ router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, r
         }
       : {};
 
-    // 1) Try DB preferences
     let prefsRecord: any = null;
     let prefsModel: string | null = null;
     if (clerkId) {
@@ -248,7 +280,6 @@ router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, r
       prefsModel = sourceModel;
     }
 
-    // 2) Client-provided tokens (optional)
     const clientProvidedTokens = normalizeTokens(
       [
         ...(Array.isArray(req.body?.profileTokens) ? req.body.profileTokens : []),
@@ -261,27 +292,10 @@ router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, r
       ],
       2
     );
-
-    // 3) Fallback: tokens from q
     const qTokens = normalizeTokens([q], 3);
-
-    // Final tokens
     let profileTokens = tokensFromPrefs(prefsRecord);
-    if (profileTokens.length === 0 && clientProvidedTokens.length > 0) {
-      profileTokens = clientProvidedTokens;
-    }
-    if (profileTokens.length === 0 && qTokens.length > 0) {
-      profileTokens = qTokens;
-    }
-
-    if (debug) {
-      console.log("[scores] clerkId:", clerkId);
-      console.log("[scores] prefsModel:", prefsModel);
-      console.log("[scores] tokensFromPrefs:", tokensFromPrefs(prefsRecord));
-      console.log("[scores] clientProvidedTokens:", clientProvidedTokens);
-      console.log("[scores] qTokens:", qTokens);
-      console.log("[scores] final profileTokens:", profileTokens);
-    }
+    if (profileTokens.length === 0 && clientProvidedTokens.length > 0) profileTokens = clientProvidedTokens;
+    if (profileTokens.length === 0 && qTokens.length > 0) profileTokens = qTokens;
 
     const [rows, count] = await Promise.all([
       prisma.grant.findMany({
@@ -289,9 +303,7 @@ router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, r
         orderBy: { createdAt: "desc" },
         take: limit,
         skip: offset,
-        include: {
-          agency: { select: { id: true, name: true, url: true } },
-        },
+        include: { agency: { select: { id: true, name: true, url: true } } },
       }),
       prisma.grant.count({ where }),
     ]);
@@ -310,24 +322,11 @@ router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, r
         fundingMax: g.fundingMax,
         matchScore: score,
       };
-
       if (!debug) return base;
-      return {
-        ...base,
-        __debug: {
-          textSample: grantText(g).slice(0, 160),
-        },
-      };
+      return { ...base, __debug: { textSample: grantText(g).slice(0, 160) } };
     });
 
-    return res.json({
-      ok: true,
-      query: q,
-      items,
-      grants: items,
-      count,
-      ...(debug ? { profileTokens, prefsModel } : {}),
-    });
+    return res.json({ ok: true, query: q, items, grants: items, count, ...(debug ? { profileTokens, prefsModel } : {}) });
   } catch (err: any) {
     console.error("grants route error:", err?.message || err);
     return res.status(500).json({ ok: false, error: "server error in /internal/grants/search" });
