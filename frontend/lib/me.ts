@@ -1,49 +1,65 @@
 // frontend/lib/me.ts
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ||
-  "https://grantfinder-production.up.railway.app/api";
-
-/** What we POST to save preferences. Keep it flexible. */
 export type PreferencesPayload = {
   clerkId: string;
-  // Everything else is optional/flexible so the backend can accept current shape
-  [key: string]: any;
+  department?: string;
+  position?: string;
+  researchAreas?: string[];
+  keywords?: string[];
+  fundingCategories?: string[];
+  preferredSources?: string[];
+  fundingLevel?: string;
+  projectDuration?: string;
+  deadlineFirst?: boolean;
+  alertFrequency?: string;
+  notificationMethod?: string;
 };
 
-/** Normalized shape we return to the app after GET. */
-export type Preferences = Record<string, any> | null;
+// What the frontend uses after normalization
+export type PreferencesResponse =
+  | { exists: true; data: Record<string, any> }
+  | { exists: false };
 
-/** Fetch the current user's saved preferences. */
-export async function getMyPreferences(clerkId: string): Promise<Preferences> {
-  if (!clerkId) return null;
-  const url = `${API_BASE}/me/preferences?clerkId=${encodeURIComponent(clerkId)}`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
-  if (!res.ok) return null;
+const API =
+  process.env.NEXT_PUBLIC_API_BASE?.replace(/\/+$/, "") ||
+  "https://grantfinder-production.up.railway.app/api";
 
+// GET /me/preferences?clerkId=...
+export async function getMyPreferences(
+  clerkId: string
+): Promise<PreferencesResponse> {
+  const url = `${API}/me/preferences?clerkId=${encodeURIComponent(clerkId)}`;
+  const res = await fetch(url, { method: "GET", credentials: "include" });
+
+  if (res.status === 404) {
+    // backend returns 404 when no prefs yet
+    return { exists: false };
+  }
+  if (!res.ok) {
+    // treat any other failure as “no prefs” but don’t crash builds
+    return { exists: false };
+  }
+
+  // if backend returns the preference object
   const json = await res.json().catch(() => null);
-  if (!json) return null;
-
-  // Support a few possible backend response shapes
-  return json.preferences ?? json.record ?? json.data ?? json;
+  if (json && typeof json === "object") {
+    return { exists: true, data: json as Record<string, any> };
+  }
+  return { exists: false };
 }
 
-/** Create/update the current user's preferences. */
-export async function saveMyPreferences(payload: PreferencesPayload): Promise<Preferences> {
-  if (!payload?.clerkId) throw new Error("saveMyPreferences: missing clerkId");
-
-  const res = await fetch(`${API_BASE}/me/preferences`, {
+// POST /me/preferences (create or update)
+export async function saveMyPreferences(payload: PreferencesPayload) {
+  const url = `${API}/me/preferences`;
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(payload),
   });
-
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`saveMyPreferences failed: ${res.status} ${text}`);
   }
-
-  const json = await res.json().catch(() => null);
-  // Normalize return just like GET
-  return json?.preferences ?? json?.record ?? json?.data ?? json;
+  return res.json().catch(() => ({}));
 }
