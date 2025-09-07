@@ -37,6 +37,5 @@ COPY --from=builder /app/package*.json ./
 
 EXPOSE 4000
 
-# Generate Prisma client at container startup, then run the server.
-# This avoids all build-time schema/engine quirks.
-CMD ["sh", "-c", "npx prisma generate --schema=prisma/schema.prisma && node dist/index.js"]
+# ✅ Generate Prisma client, then run migrations (or db push if none), then start server
+CMD ["sh", "-c", "npx prisma generate --schema=prisma/schema.prisma && (npx prisma migrate deploy || npx prisma db push) && node dist/index.js"]
