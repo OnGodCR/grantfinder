@@ -14,7 +14,7 @@ from lxml import html as lxml_html
 from bs4 import BeautifulSoup
 from readability import Document
 import dateparser
-from robotexclusionrulesparser import RobotExclusionRulesParser as Robots
+from urllib import robotparser
 import feedfinder2
 
 # ----------------- ENV / CONFIG -----------------
@@ -116,13 +116,16 @@ def parse_deadline(text: str) -> Optional[str]:
     return None
 
 def allowed_by_robots(robots_txt: Optional[str], url: str) -> bool:
-    if not robots_txt: return True
+    if not robots_txt:
+        return True
     try:
-        r = Robots()
-        r.parse(robots_txt)
-        return r.is_allowed(USER_AGENT, url)
+        rp = robotparser.RobotFileParser()
+        # robotparser can parse from lines directly
+        rp.parse(robots_txt.splitlines())
+        return rp.can_fetch(USER_AGENT, url)
     except Exception:
         return True
+
 
 # ----------------- POST TO BACKEND -----------------
 @retry(wait=wait_exponential_jitter(initial=1, max=20), stop=stop_after_attempt(5))
