@@ -5,7 +5,6 @@ import { prisma } from "../prisma.js";
 
 const router = Router();
 
-// Dev auth bypass
 function requireAuthOrSkip(req: Request, res: Response, next: NextFunction) {
   if (process.env.SKIP_AUTH === "1" || process.env.SKIP_AUTH === "true") return next();
   const auth = (req.headers.authorization || "").toLowerCase();
@@ -13,97 +12,118 @@ function requireAuthOrSkip(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
-/** --- tiny helpers for scoring --- */
-function toTokens(s: string): string[] {
+/** --------------------------
+ *  Scoring helpers
+ *  -------------------------*/
+const STOP = new Set([
+  "the","a","an","and","or","of","to","in","for","on","with","by","at","from","is","are","as","that","this","these","those","it","its","be","been","was","were","will","can","may","into","about","over","under","between","within","using","use"
+]);
+
+function tokenize(s: string): string[] {
   return (s || "")
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
-    .filter(Boolean);
+    .filter(w => w.length > 2 && !STOP.has(w));
 }
 
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 || b.size === 0) return 0;
-  let inter = 0;
-  a.forEach((x) => { if (b.has(x)) inter++; });
-  const union = a.size + b.size - inter;
-  return union > 0 ? inter / union : 0;
+function fundingLevelToRange(level?: string): [number, number] | null {
+  switch (level) {
+    case "< $50K": return [0, 50_000];
+    case "$50K–$250K": return [50_000, 250_000];
+    case "$250K–$1M": return [250_000, 1_000_000];
+    case "> $1M": return [1_000_000, Number.MAX_SAFE_INTEGER];
+    default: return null;
+  }
 }
 
-function clamp01(x: number): number {
-  return Math.max(0, Math.min(1, x));
+function fundingMatches(level: string | undefined, grantMin?: number | null, grantMax?: number | null): boolean {
+  const r = fundingLevelToRange(level);
+  if (!r) return false;
+  const [lo, hi] = r;
+  // Use grantMax if present, else grantMin. If neither, cannot check.
+  const g = (typeof grantMax === "number" ? grantMax : (typeof grantMin === "number" ? grantMin : null));
+  if (g == null) return false;
+  return g >= lo && g <= hi;
 }
 
-/**
- * Compute a 0–100 match score using:
- * - 70%: Jaccard overlap between user's (keywords + researchAreas) tokens and grant (title + summary + description) tokens
- * - 30%: Preferred source match (agency name matches any preferredSources entry)
+/** Core scoring: 0..100
+ * Weights:
+ * - keyword token hit: 3 each
+ * - research areas token hit: 2 each
+ * - funding categories token hit: 1 each
+ * - preferred source (agency) match: +6
+ * - funding level match: +8
+ * - deadline boost when user prefers deadlines & within 60d: +4
+ * Then clamp to [0,100].
  */
-function computeScore(
-  userKeywords: string[],
-  userAreas: string[],
-  preferredSources: string[],
-  grantText: string,
-  grantAgencyName?: string | null
-): number {
-  const userSet = new Set<string>([...userKeywords, ...userAreas].flatMap(toTokens));
-  const grantSet = new Set<string>(toTokens(grantText));
+function computeMatchScore(grant: any, profile: any | null): number {
+  if (!profile) return 0;
 
-  const textSim = jaccard(userSet, grantSet); // 0..1
+  const text = [
+    grant.title || "",
+    grant.summary || "",
+    grant.description || "",
+    grant.purpose || "",
+  ].join(" ");
+  const gTokens = new Set(tokenize(text));
 
-  let sourceBonus = 0;
-  if (grantAgencyName) {
-    const g = grantAgencyName.toLowerCase();
-    const hit = (preferredSources || []).some((s) => g.includes(String(s || "").toLowerCase()));
-    sourceBonus = hit ? 1 : 0; // 0 or 1
+  const kw = (profile.keywords || []) as string[];
+  const areas = (profile.researchAreas || []) as string[];
+  const cats = (profile.fundingCategories || []) as string[];
+  const preferred = (profile.preferredSources || []) as string[];
+
+  let score = 0;
+
+  // Token overlap
+  for (const t of tokenize(kw.join(" "))) if (gTokens.has(t)) score += 3;
+  for (const t of tokenize(areas.join(" "))) if (gTokens.has(t)) score += 2;
+  for (const t of tokenize(cats.join(" "))) if (gTokens.has(t)) score += 1;
+
+  // Preferred source (agency name contains any preferred source label)
+  const agencyName = (grant.agency?.name || grant.source || "").toLowerCase();
+  if (agencyName && preferred.some((p: string) => agencyName.includes(p.toLowerCase()))) {
+    score += 6;
   }
 
-  const score =
-    0.7 * textSim +
-    0.3 * sourceBonus;
+  // Funding level
+  if (fundingMatches(profile.fundingLevel, grant.fundingMin, grant.fundingMax)) {
+    score += 8;
+  }
 
-  return Math.round(clamp01(score) * 100);
+  // Deadline boost (if user likes near-term deadlines)
+  const d = grant.deadline ? new Date(grant.deadline) : null;
+  if (profile.deadlineFirst && d) {
+    const daysLeft = Math.ceil((+d - Date.now()) / (1000 * 60 * 60 * 24));
+    if (daysLeft > 0 && daysLeft <= 60) score += 4;
+  }
+
+  // Soft normalization: convert “raw” points to percentage-ish feel.
+  // Cap at 100; small baseline so non-zero matches don’t look too tiny.
+  return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-// POST /api/internal/grants
 router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Response) => {
   try {
     const q = (req.body?.q ?? "").toString().trim();
     const limit = Math.min(Math.max(Number(req.body?.limit ?? 24), 1), 100);
     const offset = Math.max(Number(req.body?.offset ?? 0), 0);
-    const clerkId = (req.body?.clerkId ?? "").toString().trim() || null;
+    const clerkId = (req.body?.clerkId ?? "").toString().trim() || undefined;
 
-    // search condition
     const where: Prisma.GrantWhereInput = q
       ? {
           OR: [
-            { title: { contains: q, mode: "insensitive" } },
-            { summary: { contains: q, mode: "insensitive" } },
-            { description: { contains: q, mode: "insensitive" } },
+            { title: { contains: q, mode: Prisma.QueryMode.insensitive } },
+            { summary: { contains: q, mode: Prisma.QueryMode.insensitive } },
+            { description: { contains: q, mode: Prisma.QueryMode.insensitive } },
           ],
         }
       : {};
 
-    // prefetch user profile (optional)
-    let userKeywords: string[] = [];
-    let userAreas: string[] = [];
-    let preferredSources: string[] = [];
-
-    if (clerkId) {
-      const prof = await prisma.userProfile.findUnique({
-        where: { clerkId },
-        select: {
-          keywords: true,
-          researchAreas: true,
-          preferredSources: true,
-        },
-      });
-      if (prof) {
-        userKeywords = prof.keywords || [];
-        userAreas = prof.researchAreas || [];
-        preferredSources = prof.preferredSources || [];
-      }
-    }
+    // pull profile once for scoring
+    const profile = clerkId
+      ? await prisma.userProfile.findUnique({ where: { clerkId } })
+      : null;
 
     const [rows, count] = await Promise.all([
       prisma.grant.findMany({
@@ -111,38 +131,30 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
         orderBy: { createdAt: "desc" },
         take: limit,
         skip: offset,
-        include: {
-          agency: { select: { id: true, name: true, url: true } },
-        },
+        include: { agency: { select: { id: true, name: true, url: true } } },
       }),
       prisma.grant.count({ where }),
     ]);
 
     const items = rows.map((g) => {
-      const summary = g.summary || g.description?.slice(0, 280) || "";
-      const grantText = [g.title, g.summary || "", g.description || ""].join(" ");
-      const scorePercent = (userKeywords.length + userAreas.length) > 0 || preferredSources.length > 0
-        ? computeScore(userKeywords, userAreas, preferredSources, grantText, g.agency?.name ?? null)
-        : null; // null when we can't compute
-
+      const matchScore = computeMatchScore(g, profile); // 0..100
       return {
         id: g.id,
         title: g.title,
-        summary,
+        summary: g.summary || g.description?.slice(0, 280) || "",
         url: g.url || g.agency?.url || null,
-        agency: g.agency?.name || null,
+        agency: g.agency?.name ?? null,
         deadline: g.deadline,
         currency: g.currency,
         fundingMin: g.fundingMin,
         fundingMax: g.fundingMax,
-        // 👇 new field the frontend can display as a percent
-        scorePercent,
+        matchScore, // <-- add to payload
       };
     });
 
     return res.json({ ok: true, query: q, items, grants: items, count });
   } catch (err: any) {
-    console.error("grants route error:", err?.stack || err?.message || err);
+    console.error("grants route error:", err?.message || err);
     return res.status(500).json({ ok: false, error: "server error in /internal/grants" });
   }
 });
