@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 # Multi-source Grant Scraper: RSS + auto-RSS + sitemap + HTML + web search
+# ✅ Changes vs your original:
+#    1) Robust requests session with retries & browser-like headers
+#    2) Safer HTML pipeline (strip control chars; Readability -> lxml -> BeautifulSoup fallback)
+#    3) Authorization: Bearer <INTERNAL_API_TOKEN> to match your Express middleware
+#    4) Fetch pacing and body size cap to reduce errors / timeouts
+
 import os, sys, time, json, re, traceback, hashlib
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Set, Tuple
@@ -17,15 +23,18 @@ import dateparser
 from urllib import robotparser
 import feedfinder2
 
+from requests.adapters import HTTPAdapter, Retry
+
 # ----------------- ENV / CONFIG -----------------
-BACKEND_INTERNAL_URL = os.getenv("BACKEND_INTERNAL_URL")  # e.g., https://.../api/internal/grants
-INTERNAL_API_TOKEN   = os.getenv("INTERNAL_API_TOKEN")
+BACKEND_INTERNAL_URL = os.getenv("BACKEND_INTERNAL_URL")  # e.g., https://.../internal/grants
+INTERNAL_API_TOKEN   = os.getenv("INTERNAL_API_TOKEN")    # required unless backend sets SKIP_AUTH=1
 BATCH_LIMIT          = int(os.getenv("SCRAPER_BATCH_LIMIT", "10"))
 LOG_LEVEL            = os.getenv("SCRAPER_LOG_LEVEL", "info").lower()
 DRY_RUN              = os.getenv("SCRAPER_DRY_RUN", "false").lower() == "true"
 TIMEOUT_SEC          = int(os.getenv("SCRAPER_HTTP_TIMEOUT", "30"))
 REQUEST_DELAY_MS     = int(os.getenv("SCRAPER_DELAY_MS", "300"))
-USER_AGENT           = os.getenv("SCRAPER_UA", "GrantFinderBot/1.0 (+https://example.com)")
+USER_AGENT           = os.getenv("SCRAPER_UA", "")  # if empty we set a browser UA below
+MAX_BODY             = int(os.getenv("SCRAPER_MAX_BODY_BYTES", "2000000"))  # 2 MB
 
 # Search providers (choose one)
 SERPAPI_KEY          = os.getenv("SERPAPI_KEY")      # optional
@@ -51,8 +60,30 @@ GRANT_KEYWORDS = {
 DEADLINE_HINTS = {"deadline","due","closes","closing date","close date","apply by","submission deadline"}
 AMOUNT_HINTS   = {"amount","budget","award","max","up to","$","usd","eur","gbp"}
 
-SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": USER_AGENT})
+def _build_session() -> requests.Session:
+    s = requests.Session()
+    retries = Retry(
+        total=4,
+        backoff_factor=0.8,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset(["GET", "HEAD", "POST"])
+    )
+    s.mount("http://", HTTPAdapter(max_retries=retries))
+    s.mount("https://", HTTPAdapter(max_retries=retries))
+    s.headers.update({
+        "User-Agent": USER_AGENT or (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Connection": "close",
+    })
+    return s
+
+SESSION = _build_session()
 
 # ----------------- LOGGING -----------------
 def log(level: str, msg: str, **ctx):
@@ -80,14 +111,19 @@ def same_host(u1: str, u2: str) -> bool:
 
 def fetch(url: str) -> Optional[requests.Response]:
     try:
-        r = SESSION.get(url, timeout=TIMEOUT_SEC)
+        r = SESSION.get(url, timeout=TIMEOUT_SEC, allow_redirects=True)
         if r.status_code >= 400:
             log("warn", "Fetch bad status", url=url, status=r.status_code)
             return None
+        # trim oversized responses to protect parsers
+        if r.content and len(r.content) > MAX_BODY:
+            r._content = r.content[:MAX_BODY]
         return r
     except Exception as e:
         log("warn", "Fetch error", url=url, error=str(e))
         return None
+    finally:
+        sleep_ms(REQUEST_DELAY_MS)
 
 def textify(elem) -> str:
     if elem is None: return ""
@@ -142,7 +178,7 @@ def allowed_by_robots(robots_txt: Optional[str], url: str) -> bool:
     try:
         rp = robotparser.RobotFileParser()
         rp.parse(robots_txt.splitlines())
-        return rp.can_fetch(USER_AGENT, url)
+        return rp.can_fetch(SESSION.headers.get("User-Agent","*"), url)
     except Exception:
         return True
 
@@ -177,26 +213,72 @@ def relevance_score(title: str, body: str) -> int:
 def looks_like_grant_page(url: str, title: str, description: str) -> bool:
     return relevance_score(title, description) >= RELEVANCE_MIN_SCORE
 
+# ----------------- HTML Sanitation & Readability Fallback -----------------
+CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
+
+def _safe_text(s: str) -> str:
+    if not s: return ""
+    return CONTROL_CHARS_RE.sub(" ", s)
+
+def download_and_readable(url: str) -> Optional[lxml_html.HtmlElement]:
+    resp = fetch(url)
+    if not resp:
+        return None
+
+    raw = resp.text or ""
+    raw = _safe_text(raw)
+
+    # Try Readability first, sanitized
+    try:
+        doc = Document(raw)
+        summary_html = doc.summary(html_partial=True)
+        summary_html = _safe_text(summary_html or "")
+        return lxml_html.fromstring(summary_html)
+    except Exception:
+        pass
+
+    # Fallback: plain DOM of the whole page (sanitized)
+    try:
+        return lxml_html.fromstring(raw)
+    except Exception:
+        # Final fallback: BeautifulSoup → text in a minimal container
+        try:
+            soup = BeautifulSoup(raw, "html.parser")
+            text = soup.get_text(separator=" ", strip=True)
+            html_min = f"<html><body><article>{_safe_text(text)}</article></body></html>"
+            return lxml_html.fromstring(html_min)
+        except Exception:
+            return None
+
 # ----------------- POST TO BACKEND -----------------
 @retry(wait=wait_exponential_jitter(initial=1, max=20), stop=stop_after_attempt(5))
 def post_grant(payload: Dict[str, Any]) -> Dict[str, Any]:
     if DRY_RUN:
         log("info", "DRY_RUN on, skipping POST", title=payload.get("title"))
         return {"ok": True, "dryRun": True}
-    if not BACKEND_INTERNAL_URL or not INTERNAL_API_TOKEN:
-        hard_fail("Missing BACKEND_INTERNAL_URL or INTERNAL_API_TOKEN env vars")
+
+    if not BACKEND_INTERNAL_URL:
+        hard_fail("Missing BACKEND_INTERNAL_URL")
+
+    headers = {"Content-Type": "application/json"}
+    # Use Authorization Bearer to match Express "requireAuthOrSkip"
+    if INTERNAL_API_TOKEN:
+        headers["Authorization"] = f"Bearer {INTERNAL_API_TOKEN}"
 
     r = SESSION.post(
         BACKEND_INTERNAL_URL,
         json=payload,
-        headers={"x-internal-token": INTERNAL_API_TOKEN, "Content-Type": "application/json"},
+        headers=headers,
         timeout=TIMEOUT_SEC,
     )
     if r.status_code == 429:
         raise RuntimeError(f"429 from backend: {r.text[:200]}")
     if r.status_code >= 300:
         raise RuntimeError(f"POST failed {r.status_code}: {r.text[:200]}")
-    return r.json()
+    try:
+        return r.json()
+    except Exception:
+        return {"ok": r.ok}
 
 def to_payload(source: str, url: str, title: str, description: str,
                eligibility: str,
@@ -284,19 +366,6 @@ def collect_sitemap_urls(name: str, url: str, include: List[str], limit: int) ->
     log("info", "Sitemap urls", feed=name, count=len(urls))
     return urls
 
-def download_and_readable(url: str) -> Optional[lxml_html.HtmlElement]:
-    resp = fetch(url)
-    if not resp: return None
-    try:
-        doc = Document(resp.text)
-        html_clean = doc.summary(html_partial=True)
-        return lxml_html.fromstring(html_clean)
-    except Exception:
-        try:
-            return lxml_html.fromstring(resp.text)
-        except Exception:
-            return None
-
 def crawl_html(seed_urls: List[str],
                same_host_only: bool,
                include_patterns: List[str],
@@ -322,16 +391,16 @@ def crawl_html(seed_urls: List[str],
 
     while queue and len(out) < max_pages:
         url, depth = queue.pop(0)
-        if url in seen: 
+        if url in seen:
             continue
         seen.add(url)
 
         if robots_txt and not allowed_by_robots(robots_txt, url):
-            log("debug", "Blocked by robots.txt", url=url); 
+            log("debug", "Blocked by robots.txt", url=url)
             continue
 
         resp = fetch(url)
-        if not resp: 
+        if not resp:
             continue
 
         out.append(url)
@@ -352,7 +421,7 @@ def crawl_html(seed_urls: List[str],
                 if same_host_only and not same_host(next_url, url):
                     continue
                 if not same_host_only:
-                    if depth >= fanout_depth: 
+                    if depth >= fanout_depth:
                         continue
                     if not is_allowed_tld(next_url):
                         continue
