@@ -1,59 +1,23 @@
-# Add/remove feeds anytime. Each feed needs a unique "name".
 feeds:
-  # --- existing feeds (RSS) ---
-  - name: "NSF Funding"
-    type: rss
+  - name: "NSF"
     url: "https://www.nsf.gov/rss/rss_www_funding.xml"
-    limit: 100
-
-  - name: "NIH Funding"
-    type: rss
+    category: "NSF Funding"
+  - name: "NIH"
     url: "https://grants.nih.gov/grants/guide/WeeklyIndex.cfm?RSSFeed=FundingOpportunities"
-    limit: 100
+    category: "NIH Funding"
 
-  # --- example: auto-discover feeds from a homepage ---
-  - name: "Seattle City Grants"
-    type: autorss
-    url: "https://www.seattle.gov"
-    limit: 50
-
-  # --- example: crawl sitemap for grants pages ---
-  - name: "State Arts Board Sitemap"
-    type: sitemap
-    url: "https://www.arts.state.example.gov/sitemap.xml"
-    include_patterns: ["/grants", "/funding"]
-    limit: 200
-
-  # --- example: HTML crawl with CSS/regex rules ---
-  - name: "University Research Office"
-    type: html
-    start_urls:
-      - "https://research.university.example.edu/funding"
-    same_host_only: true
-    include_patterns: ["/funding", "/grants", "/opportunities"]
-    exclude_patterns: ["/news", "/events"]
-    max_pages: 100
-    rules:
-      title: { css: "h1, .grant-title" }
-      description: { css: "main, article, .content" }
-      deadline:
-        css: "*"
-        regex: "(Deadline|Due|Closing)[:\\s]+([^<\\n]+)"
-      amount:
-        css: "*"
-        regex: "([$€£]\\s?\\d[\\d,\\.]*)(?:\\s?[–-]\\s?([$€£]\\s?\\d[\\d,\\.]*))?"
-      eligibility: { css: "section:contains('Eligibility'), .eligibility" }
-    limit: 50
-
-  # --- example: search-based discovery (requires SERPAPI_KEY or BING_API_KEY) ---
-  - name: "Web Search: .gov + .edu grants"
+  # Broad discovery via web search
+  - name: "Global grant discovery"
     type: search
     queries:
-      - "site:.gov (grant OR funding) apply"
-      - "site:.edu (grant OR fellowship) (application OR RFP)"
-    max_results_per_query: 30
-    same_host_only: true
-    include_patterns: ["/grant", "/funding", "/opportunit", "/rfp", "/apply"]
+      - 'site:.gov (grant OR "funding opportunity" OR NOFO OR FOA) (apply OR application)'
+      - 'site:.edu (grant OR fellowship) (RFP OR "call for proposals" OR apply)'
+      - 'site:.org (grant OR "apply for a grant") ("program" OR "guidelines")'
+      - 'foundation (grant guidelines OR "how to apply" OR "grant program")'
+      - 'site:.int (grant OR funding) (apply OR application)'
+    max_results_per_query: 50
+    same_host_only: false
+    include_patterns: ["/grant", "/funding", "/opportunit", "/rfp", "/apply", "/nofo", "/foa"]
     rules:
       title: { css: "h1, h2" }
       description: { css: "main, article, .content" }
@@ -63,8 +27,7 @@ feeds:
       amount:
         css: "*"
         regex: "([$€£]\\s?\\d[\\d,\\.]*)(?:\\s?[–-]\\s?([$€£]\\s?\\d[\\d,\\.]*))?"
-    limit: 100
+    limit: 250
 
-# Optional defaults for all feeds
 defaults:
   currency: "USD"
