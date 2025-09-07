@@ -1,6 +1,7 @@
 // backend/src/routes/grants.ts
 import { Router, Request, Response, NextFunction } from "express";
-import { prisma, Prisma } from "../prisma.js";
+import { Prisma } from "@prisma/client";        // <-- import Prisma types/enums here
+import { prisma } from "../prisma.js";          // <-- your singleton client
 
 const router = Router();
 
