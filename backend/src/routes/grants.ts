@@ -1,5 +1,5 @@
-// backend/src/routes/grants.ts
 import { Router, Request, Response, NextFunction } from "express";
+import { prisma } from "../prisma.js"; // adjust path if needed
 
 const router = Router();
 
@@ -21,42 +21,18 @@ router.post(
     try {
       const q = typeof req.body?.q === "string" ? req.body.q.trim() : "";
 
-      // Mock grants for testing
-      const mockGrants = [
-        {
-          id: "g1",
-          title: "AI-Driven Environmental Monitoring",
-          summary: "Funding to develop AI systems for climate and environmental monitoring.",
-          tags: ["AI", "Climate", "NSF"],
-          score: 92,
-          deadline: "2025-10-01",
-        },
-        {
-          id: "g2",
-          title: "Neuroscience Research Initiative",
-          summary: "Support for cutting-edge neuroscience research with U.S. institutions.",
-          tags: ["Neurobiology", "NIH"],
-          score: 80,
-          deadline: "2025-11-15",
-        },
-        {
-          id: "g3",
-          title: "Innovative Cancer Treatment Technologies",
-          summary: "Funding for innovative approaches in cancer treatment and medical devices.",
-          tags: ["Cancer", "Medicine"],
-          score: 75,
-          deadline: "2025-12-20",
-        },
-      ];
-
-      // Basic filter
-      const items = q
-        ? mockGrants.filter(
-            g =>
-              g.title.toLowerCase().includes(q.toLowerCase()) ||
-              g.summary.toLowerCase().includes(q.toLowerCase())
-          )
-        : mockGrants;
+      const items = await prisma.grant.findMany({
+        where: q
+          ? {
+              OR: [
+                { title: { contains: q, mode: "insensitive" } },
+                { summary: { contains: q, mode: "insensitive" } },
+              ],
+            }
+          : {},
+        take: 20,
+        orderBy: { deadline: "asc" },
+      });
 
       return res.json({
         ok: true,
