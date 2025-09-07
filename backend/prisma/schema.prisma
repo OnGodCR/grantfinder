@@ -173,12 +173,12 @@ model UserProfile {
   position           String?
 
   // Section 2
-  researchAreas      String[] @db.Text[]
-  keywords           String[] @db.Text[]
-  fundingCategories  String[] @db.Text[]
+  researchAreas      String[] @db.Text
+  keywords           String[] @db.Text
+  fundingCategories  String[] @db.Text
 
   // Section 3
-  preferredSources   String[] @db.Text[]
+  preferredSources   String[] @db.Text
   fundingLevel       String?
   projectDuration    String?
   deadlineFirst      Boolean  @default(false)
