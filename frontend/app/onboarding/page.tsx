@@ -35,23 +35,28 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!isLoaded) return;
-    if (!user) { setLoading(false); return; }
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     const clerkId = user.id;
     setForm((f) => ({ ...f, clerkId }));
     (async () => {
       try {
         const data = await getMyPreferences(clerkId);
-        // treat any non-null, non-empty object OR explicit `exists: true` as “has prefs”
+
         const hasPrefs =
-          !!data && (("exists" in (data as any) && (data as any).exists === true) ||
-             Object.keys(data as Record<string, any>).length > 0);
+          !!data &&
+          (("exists" in (data as any) && (data as any).exists === true) ||
+            Object.keys(data as Record<string, any>).length > 0);
 
-if (hasPrefs) {
-  window.location.replace("/discover");
-  return;
-}
-
-      } finally { setLoading(false); }
+        if (hasPrefs) {
+          window.location.replace("/discover");
+          return;
+        }
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [isLoaded, user]);
 
@@ -85,7 +90,9 @@ if (hasPrefs) {
     <main className="max-w-3xl mx-auto p-6 space-y-8">
       <header>
         <h1 className="text-3xl font-semibold">Tell us about your work</h1>
-        <p className="text-white/60 mt-1">We’ll personalize grants based on your answers. Takes ~60 seconds.</p>
+        <p className="text-white/60 mt-1">
+          We’ll personalize grants based on your answers. Takes ~60 seconds.
+        </p>
       </header>
 
       <form className="space-y-8" onSubmit={onSubmit}>
@@ -98,10 +105,14 @@ if (hasPrefs) {
             <select
               className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
               value={form.department || ""}
-              onChange={(e) => setForm(f => ({ ...f, department: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
             >
               <option value="">Select…</option>
-              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -110,10 +121,14 @@ if (hasPrefs) {
             <select
               className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
               value={form.position || ""}
-              onChange={(e) => setForm(f => ({ ...f, position: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
             >
               <option value="">Select…</option>
-              {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
+              {POSITIONS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
             </select>
           </label>
         </section>
@@ -129,9 +144,12 @@ if (hasPrefs) {
               placeholder='e.g., "AI in Healthcare, Climate Modeling"'
               value={(form.researchAreas || []).join(", ")}
               onChange={(e) =>
-                setForm(f => ({
+                setForm((f) => ({
                   ...f,
-                  researchAreas: e.target.value.split(",").map(s => s.trim()).filter(Boolean),
+                  researchAreas: e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
                 }))
               }
             />
@@ -140,15 +158,16 @@ if (hasPrefs) {
           <div>
             <span className="text-sm text-white/70">Select relevant keywords</span>
             <div className="mt-2 flex flex-wrap gap-2">
-              {["STEM", "Education", "Policy", "Health", "AI", "Climate"].map(k => (
+              {["STEM", "Education", "Policy", "Health", "AI", "Climate"].map((k) => (
                 <button
                   type="button"
                   key={k}
                   onClick={() => toggleArr("keywords", k)}
-                  className={`px-3 py-1 rounded-full text-sm border transition
-                    ${(form.keywords || []).includes(k)
+                  className={`px-3 py-1 rounded-full text-sm border transition ${
+                    (form.keywords || []).includes(k)
                       ? "bg-blue-500/20 text-blue-300 border-blue-400/40"
-                      : "bg-white/5 text-white/80 border-white/10"}`}
+                      : "bg-white/5 text-white/80 border-white/10"
+                  }`}
                 >
                   {k}
                 </button>
@@ -159,15 +178,16 @@ if (hasPrefs) {
           <div>
             <span className="text-sm text-white/70">Funding categories</span>
             <div className="mt-2 flex flex-wrap gap-2">
-              {FUNDING_CATEGORIES.map(k => (
+              {FUNDING_CATEGORIES.map((k) => (
                 <button
                   type="button"
                   key={k}
                   onClick={() => toggleArr("fundingCategories", k)}
-                  className={`px-3 py-1 rounded-full text-sm border transition
-                    ${(form.fundingCategories || []).includes(k)
+                  className={`px-3 py-1 rounded-full text-sm border transition ${
+                    (form.fundingCategories || []).includes(k)
                       ? "bg-blue-500/20 text-blue-300 border-blue-400/40"
-                      : "bg-white/5 text-white/80 border-white/10"}`}
+                      : "bg-white/5 text-white/80 border-white/10"
+                  }`}
                 >
                   {k}
                 </button>
@@ -183,8 +203,11 @@ if (hasPrefs) {
           <div>
             <span className="text-sm text-white/70">Preferred funding sources</span>
             <div className="mt-2 flex flex-wrap gap-2">
-              {SOURCES.map(k => (
-                <label key={k} className="flex items-center gap-2 rounded-md px-3 py-1 bg-white/5 border border-white/10">
+              {SOURCES.map((k) => (
+                <label
+                  key={k}
+                  className="flex items-center gap-2 rounded-md px-3 py-1 bg-white/5 border border-white/10"
+                >
                   <input
                     type="checkbox"
                     checked={(form.preferredSources || []).includes(k)}
@@ -201,10 +224,14 @@ if (hasPrefs) {
             <select
               className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
               value={form.fundingLevel || ""}
-              onChange={(e) => setForm(f => ({ ...f, fundingLevel: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, fundingLevel: e.target.value }))}
             >
               <option value="">Select…</option>
-              {LEVELS.map(v => <option key={v} value={v}>{v}</option>)}
+              {LEVELS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -213,10 +240,14 @@ if (hasPrefs) {
             <select
               className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
               value={form.projectDuration || ""}
-              onChange={(e) => setForm(f => ({ ...f, projectDuration: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, projectDuration: e.target.value }))}
             >
               <option value="">Select…</option>
-              {DURATIONS.map(v => <option key={v} value={v}>{v}</option>)}
+              {DURATIONS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -224,7 +255,7 @@ if (hasPrefs) {
             <input
               type="checkbox"
               checked={!!form.deadlineFirst}
-              onChange={(e) => setForm(f => ({ ...f, deadlineFirst: e.target.checked }))}
+              onChange={(e) => setForm((f) => ({ ...f, deadlineFirst: e.target.checked }))}
             />
             <span className="text-sm text-white/80">See near-term deadlines first</span>
           </label>
@@ -239,10 +270,14 @@ if (hasPrefs) {
             <select
               className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
               value={form.alertFrequency || ""}
-              onChange={(e) => setForm(f => ({ ...f, alertFrequency: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, alertFrequency: e.target.value }))}
             >
               <option value="">Select…</option>
-              {ALERTS.map(v => <option key={v} value={v}>{v}</option>)}
+              {ALERTS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -251,10 +286,14 @@ if (hasPrefs) {
             <select
               className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
               value={form.notificationMethod || ""}
-              onChange={(e) => setForm(f => ({ ...f, notificationMethod: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, notificationMethod: e.target.value }))}
             >
               <option value="">Select…</option>
-              {METHODS.map(v => <option key={v} value={v}>{v}</option>)}
+              {METHODS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
             </select>
           </label>
         </section>
