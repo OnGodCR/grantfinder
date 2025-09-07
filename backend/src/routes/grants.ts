@@ -12,88 +12,115 @@ function requireAuthOrSkip(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
+/** ---------- tiny helpers ---------- */
+function toTokens(s: string): string[] {
+  return (s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function unique<T>(arr: T[]): T[] {
+  return Array.from(new Set(arr));
+}
+
 /**
- * Very defensive scorer: works even if preferences or fields are missing.
- * Produces an integer 0..100.
+ * Recall-like content overlap:
+ * (# of unique user tokens found in grant text) / (# of unique user tokens)
+ * If userTokens is empty, return 0.
  */
-function computeMatchScore(grant: any, prefs: any): number {
-  if (!prefs) return 0;
+function contentRecall(userTokens: string[], grantText: string): number {
+  const u = unique(userTokens);
+  if (u.length === 0) return 0;
+  const text = ` ${grantText.toLowerCase()} `;
+  let hits = 0;
+  for (const t of u) {
+    if (t.length < 3) continue; // ignore tiny words
+    if (text.includes(` ${t} `) || text.includes(` ${t}`) || text.includes(`${t} `)) hits++;
+  }
+  return hits / u.length;
+}
 
-  // Pull fields safely
-  const orgType = (prefs?.orgType ?? "").toString().toLowerCase();
-  const sectors: string[] = Array.isArray(prefs?.sectors) ? prefs.sectors : [];
-  const states: string[] = Array.isArray(prefs?.states) ? prefs.states : (prefs?.state ? [prefs.state] : []);
-  const keywords: string[] = Array.isArray(prefs?.keywords) ? prefs.keywords : [];
-  const minNeeded = Number.isFinite(prefs?.fundingMin) ? Number(prefs.fundingMin) : null;
-  const maxNeeded = Number.isFinite(prefs?.fundingMax) ? Number(prefs.fundingMax) : null;
+/** Normalize a 0..1 value safely to 0..100 integer */
+function pct01(x: number): number {
+  if (!isFinite(x) || isNaN(x)) return 0;
+  if (x < 0) return 0;
+  if (x > 1) return 100;
+  return Math.round(x * 100);
+}
 
-  const text = [
-    grant?.title ?? "",
-    grant?.summary ?? "",
-    grant?.description ?? "",
-    grant?.purpose ?? "",
-  ]
-    .join(" ")
-    .toLowerCase();
+/**
+ * Build a compact "profile" token set from preferences.
+ * Adjust field names to your actual preferences schema if needed.
+ */
+function tokensFromPrefs(prefs: any): string[] {
+  if (!prefs) return [];
+  const fields: string[] = [];
 
-  // Simple feature points (total weights sum to 1.0)
-  let score = 0;
-  let weightTotal = 0;
+  // Common preference fields — rename to match your DB:
+  // strings
+  if (prefs.orgType) fields.push(prefs.orgType);
+  if (prefs.locationState) fields.push(prefs.locationState);
+  if (prefs.locationCountry) fields.push(prefs.locationCountry);
+  if (prefs.mission) fields.push(prefs.mission);
 
-  // 1) Sector/tag overlap (0.35)
-  if (sectors.length) {
-    const hits = sectors.filter(s => s && text.includes(String(s).toLowerCase())).length;
-    const sectorScore = Math.min(hits / Math.max(sectors.length, 1), 1);
-    score += sectorScore * 0.35;
-    weightTotal += 0.35;
+  // arrays
+  if (Array.isArray(prefs.focusAreas)) fields.push(...prefs.focusAreas);
+  if (Array.isArray(prefs.grantTypes)) fields.push(...prefs.grantTypes);
+  if (Array.isArray(prefs.keywords)) fields.push(...prefs.keywords);
+
+  // booleans as keywords
+  if (prefs.isNonprofit) fields.push("nonprofit");
+  if (prefs.isForProfit) fields.push("for-profit");
+  if (prefs.isStartup) fields.push("startup");
+  if (prefs.isResearch) fields.push("research");
+
+  // numbers/budgets (coerce into coarse tokens)
+  if (typeof prefs.budgetMin === "number") fields.push(`budgetmin_${Math.floor(prefs.budgetMin / 1000)}k`);
+  if (typeof prefs.budgetMax === "number") fields.push(`budgetmax_${Math.floor(prefs.budgetMax / 1000)}k`);
+
+  // free text
+  if (prefs.goals) fields.push(prefs.goals);
+  if (prefs.description) fields.push(prefs.description);
+
+  // Flatten to tokens
+  return unique(fields.flatMap(toTokens));
+}
+
+/**
+ * Final score 0..100 using:
+ *  - 70% content recall (profile tokens vs grant title+summary+description+agency)
+ *  - 30% light heuristics (location/sector style hints if present)
+ * Tweak weights as you wish.
+ */
+function computeScore(grant: any, profileTokens: string[]): number {
+  const title = grant.title || "";
+  const summary = grant.summary || "";
+  const desc = grant.description || "";
+  const agencyName = grant.agency?.name || "";
+  const text = [title, summary, desc, agencyName].join(" ");
+
+  const recall = contentRecall(profileTokens, text); // 0..1
+
+  // Light heuristics (examples): boost if "nonprofit"/"startup" appears in grant text
+  let heur = 0;
+  const t = text.toLowerCase();
+  const hasNonprofit = t.includes("nonprofit") || t.includes("non-profit");
+  const hasStartup = t.includes("startup") || t.includes("start-up");
+  const hasResearch = t.includes("research");
+  const hints = [
+    profileTokens.includes("nonprofit") && hasNonprofit,
+    profileTokens.includes("startup") && hasStartup,
+    profileTokens.includes("research") && hasResearch,
+  ].filter(Boolean).length;
+  if (hints > 0) {
+    // each hint adds a small boost up to 0.3
+    heur = Math.min(0.1 * hints, 0.3);
   }
 
-  // 2) Keyword overlap (0.30)
-  if (keywords.length) {
-    const hits = keywords.filter(k => k && text.includes(String(k).toLowerCase())).length;
-    const kwScore = Math.min(hits / Math.max(keywords.length, 1), 1);
-    score += kwScore * 0.30;
-    weightTotal += 0.30;
-  }
-
-  // 3) Org type hint (0.15)
-  if (orgType) {
-    const orgHit =
-      text.includes(orgType) ||
-      (grant?.eligibility ?? "").toString().toLowerCase().includes(orgType);
-    score += (orgHit ? 1 : 0) * 0.15;
-    weightTotal += 0.15;
-  }
-
-  // 4) Location/state (0.10) — match if any preferred state appears in text or grant.state(s)
-  const grantStates: string[] = Array.isArray(grant?.states) ? grant.states : (grant?.state ? [grant.state] : []);
-  if (states.length) {
-    const statesLower = states.map(s => String(s).toLowerCase());
-    const grantStatesLower = grantStates.map(s => String(s).toLowerCase());
-    const anyMatchInField = statesLower.some(s => grantStatesLower.includes(s));
-    const anyMatchInText = statesLower.some(s => text.includes(s));
-    score += (anyMatchInField || anyMatchInText ? 1 : 0) * 0.10;
-    weightTotal += 0.10;
-  }
-
-  // 5) Funding range fit (0.10)
-  const gMin = Number.isFinite(grant?.fundingMin) ? Number(grant.fundingMin) : null;
-  const gMax = Number.isFinite(grant?.fundingMax) ? Number(grant.fundingMax) : null;
-  if (minNeeded != null || maxNeeded != null) {
-    // Heuristic: treat fit as overlap between [gMin,gMax] and [minNeeded,maxNeeded]
-    const a1 = gMin ?? 0;
-    const a2 = gMax ?? a1;
-    const b1 = minNeeded ?? 0;
-    const b2 = maxNeeded ?? b1;
-    const overlap = Math.max(0, Math.min(a2, b2) - Math.max(a1, b1));
-    const span = Math.max(a2 - a1, b2 - b1, 1);
-    const fundScore = Math.min(overlap / span, 1);
-    score += fundScore * 0.10;
-    weightTotal += 0.10;
-  }
-
-  if (weightTotal === 0) return 0;
-  return Math.round((score / weightTotal) * 100);
+  const score01 = 0.7 * recall + 0.3 * heur; // clamp handled by pct01
+  return pct01(score01);
 }
 
 router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Response) => {
@@ -101,12 +128,7 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
     const q = (req.body?.q ?? "").toString().trim();
     const limit = Math.min(Math.max(Number(req.body?.limit ?? 24), 1), 100);
     const offset = Math.max(Number(req.body?.offset ?? 0), 0);
-
-    const clerkId =
-      (req.query?.clerkId as string) ||
-      (req.body?.clerkId as string) ||
-      (req.headers["x-clerk-id"] as string) ||
-      "";
+    const clerkId = (req.body?.clerkId ?? "").toString().trim() || null;
 
     const where: Prisma.GrantWhereInput = q
       ? {
@@ -118,7 +140,24 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
         }
       : {};
 
-    const [rows, count, prefs] = await Promise.all([
+    // Load preferences if we got a clerkId.
+    // Adjust to your actual model/table name & unique constraint.
+    let prefs: any = null;
+    if (clerkId) {
+      try {
+        // Example: table name "Preference" with unique clerkId
+        prefs = await prisma.preference.findUnique({
+          where: { clerkId },
+        });
+      } catch (e) {
+        // don't crash scoring if table is different/missing
+        console.warn("preferences load failed for clerkId:", clerkId, e);
+      }
+    }
+
+    const profileTokens = tokensFromPrefs(prefs);
+
+    const [rows, count] = await Promise.all([
       prisma.grant.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -126,18 +165,13 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
         skip: offset,
         include: {
           agency: { select: { id: true, name: true, url: true } },
-          // include states/tags if you have relations; keep optional
-          // states: true, tags: true,
         },
       }),
       prisma.grant.count({ where }),
-      clerkId
-        ? prisma.preferences.findUnique({ where: { clerkId } }).catch(() => null)
-        : Promise.resolve(null),
     ]);
 
     const items = rows.map((g) => {
-      const matchScore = computeMatchScore(g, prefs);
+      const score = computeScore(g, profileTokens);
       return {
         id: g.id,
         title: g.title,
@@ -148,7 +182,7 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
         currency: g.currency,
         fundingMin: g.fundingMin,
         fundingMax: g.fundingMax,
-        matchScore,           // ✅ 0..100 integer
+        matchScore: score, // ✅ always 0..100
       };
     });
 
