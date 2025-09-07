@@ -1,6 +1,7 @@
 // frontend/app/layout.tsx
 import './globals.css';
 import { ClerkProvider } from '@clerk/nextjs';
+import OnboardingGate from '@/components/OnboardingGate';
 
 export const metadata = {
   title: 'Grantlytic',
@@ -12,6 +13,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html lang="en">
         <body className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900">
+          {/* 🔒 Gate: forces onboarding if needed */}
+          <OnboardingGate />
+
           <div className="mx-auto max-w-[1320px] px-4 py-6">
             <div className="flex gap-6">
               {/* Left rail */}
