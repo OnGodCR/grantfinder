@@ -1,41 +1,39 @@
 // frontend/lib/api.ts
-export async function fetchGrants({
-  q = "",
-  limit = 24,
-  offset = 0,
-  clerkId,
-  token,
-}: {
+export type FetchGrantsArgs = {
   q?: string;
   limit?: number;
   offset?: number;
-  clerkId?: string;
-  token?: string; // backend API token
-}) {
-  const base = process.env.NEXT_PUBLIC_API_BASE || "";
-  const url = `${base}/internal/grants${clerkId ? `?clerkId=${encodeURIComponent(clerkId)}` : ""}`;
+  clerkId?: string | null | undefined;
+  token?: string | undefined; // optional if your backend enforces a bearer token
+};
 
-  const res = await fetch(url, {
+const BASE =
+  process.env.NEXT_PUBLIC_API_BASE?.replace(/\/+$/, "") ||
+  "https://grantfinder-production.up.railway.app/api";
+
+export async function fetchGrants(args: FetchGrantsArgs = {}) {
+  const { q = "", limit = 24, offset = 0, clerkId, token } = args;
+
+  const res = await fetch(`${BASE}/internal/grants`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ q, limit, offset }),
-    // Ensure no caching issues
-    cache: "no-store",
+    body: JSON.stringify({
+      q,
+      limit,
+      offset,
+      // ✅ send clerkId so the backend can load preferences
+      clerkId: clerkId ?? null,
+    }),
+    // If your backend is cross-origin, you may need:
+    // credentials: "include",
   });
 
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`fetchGrants failed: ${res.status}  ${body}`);
+    const text = await res.text().catch(() => "");
+    throw new Error(`fetchGrants failed: ${res.status}  ${text || res.statusText}`);
   }
-  const data = await res.json();
-
-  // Normalize: guarantee matchScore exists
-  const items = Array.isArray(data?.items) ? data.items : [];
-  for (const it of items) {
-    if (typeof it.matchScore !== "number") it.matchScore = 0;
-  }
-  return { ...data, items };
+  return res.json();
 }
