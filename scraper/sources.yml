@@ -1,11 +1,70 @@
-# Add/remove feeds anytime. source must be unique per feed.
+# Add/remove feeds anytime. Each feed needs a unique "name".
 feeds:
-  - source: "nsf"
+  # --- existing feeds (RSS) ---
+  - name: "NSF Funding"
+    type: rss
     url: "https://www.nsf.gov/rss/rss_www_funding.xml"
-    category: "NSF Funding"
-  - source: "nih"
+    limit: 100
+
+  - name: "NIH Funding"
+    type: rss
     url: "https://grants.nih.gov/grants/guide/WeeklyIndex.cfm?RSSFeed=FundingOpportunities"
-    category: "NIH Funding"
-# Optional: fallback defaults if feed doesn’t provide them
+    limit: 100
+
+  # --- example: auto-discover feeds from a homepage ---
+  - name: "Seattle City Grants"
+    type: autorss
+    url: "https://www.seattle.gov"
+    limit: 50
+
+  # --- example: crawl sitemap for grants pages ---
+  - name: "State Arts Board Sitemap"
+    type: sitemap
+    url: "https://www.arts.state.example.gov/sitemap.xml"
+    include_patterns: ["/grants", "/funding"]
+    limit: 200
+
+  # --- example: HTML crawl with CSS/regex rules ---
+  - name: "University Research Office"
+    type: html
+    start_urls:
+      - "https://research.university.example.edu/funding"
+    same_host_only: true
+    include_patterns: ["/funding", "/grants", "/opportunities"]
+    exclude_patterns: ["/news", "/events"]
+    max_pages: 100
+    rules:
+      title: { css: "h1, .grant-title" }
+      description: { css: "main, article, .content" }
+      deadline:
+        css: "*"
+        regex: "(Deadline|Due|Closing)[:\\s]+([^<\\n]+)"
+      amount:
+        css: "*"
+        regex: "([$€£]\\s?\\d[\\d,\\.]*)(?:\\s?[–-]\\s?([$€£]\\s?\\d[\\d,\\.]*))?"
+      eligibility: { css: "section:contains('Eligibility'), .eligibility" }
+    limit: 50
+
+  # --- example: search-based discovery (requires SERPAPI_KEY or BING_API_KEY) ---
+  - name: "Web Search: .gov + .edu grants"
+    type: search
+    queries:
+      - "site:.gov (grant OR funding) apply"
+      - "site:.edu (grant OR fellowship) (application OR RFP)"
+    max_results_per_query: 30
+    same_host_only: true
+    include_patterns: ["/grant", "/funding", "/opportunit", "/rfp", "/apply"]
+    rules:
+      title: { css: "h1, h2" }
+      description: { css: "main, article, .content" }
+      deadline:
+        css: "*"
+        regex: "(Deadline|Due|Close(s|d)? on)[:\\s]+([^<\\n]+)"
+      amount:
+        css: "*"
+        regex: "([$€£]\\s?\\d[\\d,\\.]*)(?:\\s?[–-]\\s?([$€£]\\s?\\d[\\d,\\.]*))?"
+    limit: 100
+
+# Optional defaults for all feeds
 defaults:
   currency: "USD"
