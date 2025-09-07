@@ -4,6 +4,7 @@ PyYAML==6.0.2
 feedparser==6.0.11
 tenacity==8.5.0
 lxml==5.2.2
+lxml_html_clean==0.1.2
 beautifulsoup4==4.12.3
 readability-lxml==0.8.1
 dateparser==1.2.0
