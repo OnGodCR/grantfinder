@@ -45,8 +45,7 @@ export default function OnboardingPage() {
           window.location.replace("/discover");
           return;
         }
-      } catch {}
-      finally { setLoading(false); }
+      } finally { setLoading(false); }
     })();
   }, [isLoaded, user]);
 
@@ -232,7 +231,7 @@ export default function OnboardingPage() {
           <label className="block">
             <span className="text-sm text-white/70">How often do you want updates?</span>
             <select
-              className="mt-1 w/full rounded-md bg-white/5 border border-white/10 p-2"
+              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
               value={form.alertFrequency || ""}
               onChange={(e) => setForm(f => ({ ...f, alertFrequency: e.target.value }))}
             >
@@ -244,7 +243,7 @@ export default function OnboardingPage() {
           <label className="block">
             <span className="text-sm text-white/70">Preferred notification method</span>
             <select
-              className="mt-1 w/full rounded-md bg-white/5 border border-white/10 p-2"
+              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
               value={form.notificationMethod || ""}
               onChange={(e) => setForm(f => ({ ...f, notificationMethod: e.target.value }))}
             >
