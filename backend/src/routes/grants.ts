@@ -12,7 +12,34 @@ function requireAuthOrSkip(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
-/** ---------- tiny helpers ---------- */
+/** ---------- prefs loader (dynamic) ---------- */
+const DEFAULT_PREFS_MODELS = (process.env.PREFS_MODELS || "Preference,UserPreference,Profile,Me,UserPrefs,Settings")
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
+
+async function loadPrefsByClerkId(clerkId: string) {
+  for (const name of DEFAULT_PREFS_MODELS) {
+    const model = (prisma as any)[name];
+    if (!model) continue;
+
+    try {
+      if (typeof model.findUnique === "function") {
+        const found = await model.findUnique({ where: { clerkId } });
+        if (found) return found;
+      }
+      if (typeof model.findFirst === "function") {
+        const found = await model.findFirst({ where: { clerkId } });
+        if (found) return found;
+      }
+    } catch {
+      // ignore and try next model
+    }
+  }
+  return null;
+}
+
+/** ---------- scoring helpers ---------- */
 function toTokens(s: string): string[] {
   return (s || "")
     .toLowerCase()
@@ -25,24 +52,18 @@ function unique<T>(arr: T[]): T[] {
   return Array.from(new Set(arr));
 }
 
-/**
- * Recall-like content overlap:
- * (# of unique user tokens found in grant text) / (# of unique user tokens)
- * If userTokens is empty, return 0.
- */
 function contentRecall(userTokens: string[], grantText: string): number {
   const u = unique(userTokens);
   if (u.length === 0) return 0;
   const text = ` ${grantText.toLowerCase()} `;
   let hits = 0;
   for (const t of u) {
-    if (t.length < 3) continue; // ignore tiny words
+    if (t.length < 3) continue;
     if (text.includes(` ${t} `) || text.includes(` ${t}`) || text.includes(`${t} `)) hits++;
   }
   return hits / u.length;
 }
 
-/** Normalize a 0..1 value safely to 0..100 integer */
 function pct01(x: number): number {
   if (!isFinite(x) || isNaN(x)) return 0;
   if (x < 0) return 0;
@@ -50,50 +71,43 @@ function pct01(x: number): number {
   return Math.round(x * 100);
 }
 
-/**
- * Build a compact "profile" token set from preferences.
- * Adjust field names to your actual preferences schema if needed.
- */
 function tokensFromPrefs(prefs: any): string[] {
   if (!prefs) return [];
   const fields: string[] = [];
 
-  // Common preference fields — rename to match your DB:
-  // strings
-  if (prefs.orgType) fields.push(prefs.orgType);
-  if (prefs.locationState) fields.push(prefs.locationState);
-  if (prefs.locationCountry) fields.push(prefs.locationCountry);
-  if (prefs.mission) fields.push(prefs.mission);
+  const pushStr = (v?: any) => { if (typeof v === "string" && v.trim()) fields.push(v); };
+  const pushArr = (v?: any) => { if (Array.isArray(v)) fields.push(...v.map(String)); };
 
-  // arrays
-  if (Array.isArray(prefs.focusAreas)) fields.push(...prefs.focusAreas);
-  if (Array.isArray(prefs.grantTypes)) fields.push(...prefs.grantTypes);
-  if (Array.isArray(prefs.keywords)) fields.push(...prefs.keywords);
+  pushStr(prefs.orgType);
+  pushStr(prefs.locationState);
+  pushStr(prefs.locationCountry);
+  pushStr(prefs.mission);
+  pushStr(prefs.description);
+  pushStr(prefs.goals);
 
-  // booleans as keywords
+  pushArr(prefs.focusAreas);
+  pushArr(prefs.grantTypes);
+  pushArr(prefs.keywords);
+  pushArr(prefs.tags);
+
   if (prefs.isNonprofit) fields.push("nonprofit");
   if (prefs.isForProfit) fields.push("for-profit");
   if (prefs.isStartup) fields.push("startup");
   if (prefs.isResearch) fields.push("research");
 
-  // numbers/budgets (coerce into coarse tokens)
   if (typeof prefs.budgetMin === "number") fields.push(`budgetmin_${Math.floor(prefs.budgetMin / 1000)}k`);
   if (typeof prefs.budgetMax === "number") fields.push(`budgetmax_${Math.floor(prefs.budgetMax / 1000)}k`);
 
-  // free text
-  if (prefs.goals) fields.push(prefs.goals);
-  if (prefs.description) fields.push(prefs.description);
-
-  // Flatten to tokens
-  return unique(fields.flatMap(toTokens));
+  return unique(
+    fields
+      .join(" ")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter(w => w.length >= 3)
+  );
 }
 
-/**
- * Final score 0..100 using:
- *  - 70% content recall (profile tokens vs grant title+summary+description+agency)
- *  - 30% light heuristics (location/sector style hints if present)
- * Tweak weights as you wish.
- */
 function computeScore(grant: any, profileTokens: string[]): number {
   const title = grant.title || "";
   const summary = grant.summary || "";
@@ -101,28 +115,27 @@ function computeScore(grant: any, profileTokens: string[]): number {
   const agencyName = grant.agency?.name || "";
   const text = [title, summary, desc, agencyName].join(" ");
 
-  const recall = contentRecall(profileTokens, text); // 0..1
+  const recall = contentRecall(profileTokens, text);
 
-  // Light heuristics (examples): boost if "nonprofit"/"startup" appears in grant text
   let heur = 0;
   const t = text.toLowerCase();
   const hasNonprofit = t.includes("nonprofit") || t.includes("non-profit");
   const hasStartup = t.includes("startup") || t.includes("start-up");
   const hasResearch = t.includes("research");
+
   const hints = [
     profileTokens.includes("nonprofit") && hasNonprofit,
     profileTokens.includes("startup") && hasStartup,
     profileTokens.includes("research") && hasResearch,
   ].filter(Boolean).length;
-  if (hints > 0) {
-    // each hint adds a small boost up to 0.3
-    heur = Math.min(0.1 * hints, 0.3);
-  }
 
-  const score01 = 0.7 * recall + 0.3 * heur; // clamp handled by pct01
+  if (hints > 0) heur = Math.min(0.1 * hints, 0.3);
+
+  const score01 = 0.7 * recall + 0.3 * heur;
   return pct01(score01);
 }
 
+/** ---------- route ---------- */
 router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Response) => {
   try {
     const q = (req.body?.q ?? "").toString().trim();
@@ -140,19 +153,9 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
         }
       : {};
 
-    // Load preferences if we got a clerkId.
-    // Adjust to your actual model/table name & unique constraint.
     let prefs: any = null;
     if (clerkId) {
-      try {
-        // Example: table name "Preference" with unique clerkId
-        prefs = await prisma.preference.findUnique({
-          where: { clerkId },
-        });
-      } catch (e) {
-        // don't crash scoring if table is different/missing
-        console.warn("preferences load failed for clerkId:", clerkId, e);
-      }
+      prefs = await loadPrefsByClerkId(clerkId);
     }
 
     const profileTokens = tokensFromPrefs(prefs);
@@ -164,7 +167,7 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
         take: limit,
         skip: offset,
         include: {
-          agency: { select: { id: true, name: true, url: true } },
+          agency: { select: { id: true, name: true, url: true} },
         },
       }),
       prisma.grant.count({ where }),
@@ -182,7 +185,7 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
         currency: g.currency,
         fundingMin: g.fundingMin,
         fundingMax: g.fundingMax,
-        matchScore: score, // ✅ always 0..100
+        matchScore: score,
       };
     });
 
