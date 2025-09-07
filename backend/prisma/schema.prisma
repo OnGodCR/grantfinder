@@ -164,6 +164,10 @@ model Match {
   grant     Grant  @relation(fields: [grantId], references: [id])
 }
 
+/**
+ * New table used by onboarding.
+ * NOTE: Array fields are plain Postgres text[] — DO NOT add @db.Text[] (that caused P1012).
+ */
 model UserProfile {
   id                 String   @id @default(cuid())
   clerkId            String   @unique
@@ -173,12 +177,12 @@ model UserProfile {
   position           String?
 
   // Section 2
-  researchAreas      String[] @db.Text
-  keywords           String[] @db.Text
-  fundingCategories  String[] @db.Text
+  researchAreas      String[]
+  keywords           String[]
+  fundingCategories  String[]
 
   // Section 3
-  preferredSources   String[] @db.Text
+  preferredSources   String[]
   fundingLevel       String?
   projectDuration    String?
   deadlineFirst      Boolean  @default(false)
