@@ -1,37 +1,87 @@
+# sources.yml
+defaults:
+  currency: USD
+
 feeds:
-  # Existing RSS
+  # --- NSF official RSS feed ---
   - name: "NSF Funding"
     type: rss
     url: "https://www.nsf.gov/rss/rss_www_funding.xml"
-    limit: 100
+    limit: 25
 
+  # --- NIH weekly funding opportunities RSS ---
   - name: "NIH Funding"
     type: rss
     url: "https://grants.nih.gov/grants/guide/WeeklyIndex.cfm?RSSFeed=FundingOpportunities"
-    limit: 100
+    limit: 25
 
-  # Broad web discovery (uses SerpAPI or Bing)
-  - name: "Global grant discovery"
+  # --- Grants.gov sitemap (covers most U.S. federal grants) ---
+  - name: "Grants.gov Sitemap"
+    type: sitemap
+    url: "https://www.grants.gov/sitemap.xml"
+    include_patterns:
+      - "/web/grants/view-"
+    limit: 20
+    rules:
+      title:
+        css: "h1, h2, .opportunity-title, .page-title"
+      description:
+        css: "main, article, .content, #content, .opportunity-body"
+      deadline:
+        css: ".closing-date, .deadline, .due-date"
+        regex: "(?:Deadline|Closing|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who-can-apply"
+
+  # --- Ford Foundation grants (example HTML crawl of a nonprofit foundation) ---
+  - name: "Ford Foundation Grants"
+    type: html
+    start_urls:
+      - "https://www.fordfoundation.org/work/our-grants/"
+    same_host_only: true
+    include_patterns:
+      - "/grants"
+    exclude_patterns:
+      - "/privacy"
+      - "/terms"
+    max_pages: 60
+    per_page_delay_ms: 400
+    limit: 15
+    rules:
+      title:
+        css: "h1, h2, .entry-title"
+      description:
+        css: "main, article, .content, #content"
+      deadline:
+        regex: "(?:Deadline|Apply by)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Up to|Maximum|Award|Budget)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  # --- Web search for private climate grants ---
+  - name: "Search: climate nonprofit grants"
     type: search
     queries:
-      - 'site:.gov (grant OR "funding opportunity" OR NOFO OR FOA) (apply OR application)'
-      - 'site:.edu (grant OR fellowship) (RFP OR "call for proposals" OR apply)'
-      - 'site:.org (grant OR "apply for a grant") ("program" OR "guidelines")'
-      - 'foundation (grant guidelines OR "how to apply" OR "grant program")'
-      - 'site:.int (grant OR funding) (apply OR application)'
-    max_results_per_query: 50
-    same_host_only: false
-    include_patterns: ["/grant", "/fund", "/opportunit", "/rfp", "/apply", "/nofo", "/foa"]
+      - "site:.org climate change grant application"
+      - "site:.edu research funding climate opportunity"
+    max_results_per_query: 10
+    same_host_only: true
+    include_patterns:
+      - "grant"
+      - "funding"
+      - "opportunity"
+    limit: 15
     rules:
-      title: { css: "h1, h2" }
-      description: { css: "main, article, .content" }
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
       deadline:
-        css: "*"
-        regex: "(Deadline|Due|Close(s|d)? on)[:\\s]+([^<\\n]+)"
+        regex: "(?:Deadline|Apply by|Due)[:\\s]+([^\\n<]+)"
       amount:
-        css: "*"
-        regex: "([$€£]\\s?\\d[\\d,\\.]*)(?:\\s?[–-]\\s?([$€£]\\s?\\d[\\d,\\.]*))?"
-    limit: 250
-
-defaults:
-  currency: "USD"
+        regex: "(?:Up to|Maximum|Award|Budget)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
