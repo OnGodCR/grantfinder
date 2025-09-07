@@ -5,10 +5,20 @@ import { prisma } from "../prisma.js";
 
 const router = Router();
 
+/** ---------- public/user auth (search) ---------- */
 function requireAuthOrSkip(req: Request, res: Response, next: NextFunction) {
   if (process.env.SKIP_AUTH === "1" || process.env.SKIP_AUTH === "true") return next();
   const auth = (req.headers.authorization || "").toLowerCase();
   if (!auth.startsWith("bearer ")) return res.status(401).json({ error: "Unauthorized" });
+  return next();
+}
+
+/** ---------- internal token auth (scraper insert) ---------- */
+function requireInternalToken(req: Request, res: Response, next: NextFunction) {
+  const token = req.headers["x-internal-token"];
+  if (!token || token !== process.env.INTERNAL_API_TOKEN) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   return next();
 }
 
@@ -44,7 +54,6 @@ function smartSplit(input: any): string[] {
   if (!input) return [];
   if (Array.isArray(input)) return input.flatMap(smartSplit);
   if (typeof input === "string") {
-    // try JSON array strings or comma / semicolon lists
     const trimmed = input.trim();
     if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
       try {
@@ -116,7 +125,6 @@ function contentRecall(userTokens: string[], text: string): number {
   let hits = 0;
   for (const t of toks) {
     if (t.length < 3) continue;
-    // word-boundary or substring fallback
     const re = new RegExp(`\\b${escapeRegex(t)}\\b`, "i");
     if (re.test(text) || text.includes(t)) hits++;
   }
@@ -138,7 +146,6 @@ function computeScore(grant: any, profileTokens: string[]): number {
   const text = grantText(grant);
   const recall = contentRecall(profileTokens, text);
 
-  // simple semantic hints
   let heur = 0;
   const hasNonprofit = /\bnon[-\s]?profit\b/i.test(text);
   const hasStartup = /\bstart[-\s]?up\b|\bstartup\b/i.test(text);
@@ -156,8 +163,64 @@ function computeScore(grant: any, profileTokens: string[]): number {
   return pct01(score01);
 }
 
-/** ---------- route ---------- */
-router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Response) => {
+/** -----------------------------------------------------------------------
+ * INSERT/UPSERT endpoint (used by the scraper)
+ * POST /api/internal/grants   with header: x-internal-token: <token>
+ * Body shape matches your scraper payload (source, sourceId, url, title, ...)
+ * ----------------------------------------------------------------------*/
+router.post("/internal/grants", requireInternalToken, async (req: Request, res: Response) => {
+  try {
+    const data = req.body || {};
+
+    if (!data.title || !data.source) {
+      return res.status(400).json({ error: "Missing required fields: title, source" });
+    }
+
+    const grant = await prisma.grant.upsert({
+      where: {
+        source_sourceId: {
+          source: data.source,
+          // fallbacks so duplicates consolidate: prefer sourceId, else URL, else "unknown"
+          sourceId: data.sourceId ?? data.url ?? "unknown",
+        },
+      },
+      update: {
+        title: data.title,
+        description: data.description,
+        url: data.url,
+        deadline: data.deadline ? new Date(data.deadline) : null,
+        fundingMin: data.fundingMin,
+        fundingMax: data.fundingMax,
+        currency: data.currency,
+        eligibility: data.eligibility,
+        updatedAt: new Date(),
+      },
+      create: {
+        source: data.source,
+        sourceId: data.sourceId ?? data.url ?? "unknown",
+        url: data.url,
+        title: data.title,
+        description: data.description,
+        deadline: data.deadline ? new Date(data.deadline) : null,
+        fundingMin: data.fundingMin,
+        fundingMax: data.fundingMax,
+        currency: data.currency,
+        eligibility: data.eligibility,
+      },
+    });
+
+    return res.json({ ok: true, id: grant.id });
+  } catch (err: any) {
+    console.error("Grant insert failed", err);
+    return res.status(500).json({ error: "Failed to insert grant" });
+  }
+});
+
+/** -----------------------------------------------------------------------
+ * SEARCH endpoint (what your file previously did)
+ * moved to: POST /api/internal/grants/search
+ * ----------------------------------------------------------------------*/
+router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, res: Response) => {
   const debug = process.env.DEBUG_SCORES === "1";
 
   try {
@@ -185,7 +248,7 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
       prefsModel = sourceModel;
     }
 
-    // 2) Fallbacks from request body (front-end can send any of these)
+    // 2) Client-provided tokens (optional)
     const clientProvidedTokens = normalizeTokens(
       [
         ...(Array.isArray(req.body?.profileTokens) ? req.body.profileTokens : []),
@@ -196,13 +259,13 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
         ...(req.body?.orgType ? [String(req.body.orgType)] : []),
         ...(req.body?.mission ? [String(req.body.mission)] : []),
       ],
-      2 // allow shorter tokens if needed
+      2
     );
 
-    // 3) Last resort: use q as weak signal
+    // 3) Fallback: tokens from q
     const qTokens = normalizeTokens([q], 3);
 
-    // Build final profileTokens (DB -> client -> q)
+    // Final tokens
     let profileTokens = tokensFromPrefs(prefsRecord);
     if (profileTokens.length === 0 && clientProvidedTokens.length > 0) {
       profileTokens = clientProvidedTokens;
@@ -267,7 +330,7 @@ router.post("/internal/grants", requireAuthOrSkip, async (req: Request, res: Res
     });
   } catch (err: any) {
     console.error("grants route error:", err?.message || err);
-    return res.status(500).json({ ok: false, error: "server error in /internal/grants" });
+    return res.status(500).json({ ok: false, error: "server error in /internal/grants/search" });
   }
 });
 
