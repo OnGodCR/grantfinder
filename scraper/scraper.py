@@ -13,6 +13,7 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 import yaml
+import textwrap
 import feedparser
 from tenacity import retry, wait_exponential_jitter, stop_after_attempt
 
@@ -85,6 +86,26 @@ def _build_session() -> requests.Session:
     return s
 
 SESSION = _build_session()
+
+def auth_sanity_check():
+    url = BACKEND_INTERNAL_URL or ""
+    tok = (INTERNAL_API_TOKEN or "")
+    redacted = tok[:6] + "…" + tok[-6:] if len(tok) >= 12 else "(too-short)"
+    log("info", "auth_check.env", 
+        BACKEND_INTERNAL_URL=url, 
+        INTERNAL_API_TOKEN_preview=redacted,
+        has_quotes=("yes" if tok.startswith('"') or tok.endswith('"') else "no"),
+        length=len(tok))
+    try:
+        # Intentionally invalid body: if auth is OK, backend replies 400 Missing fields.
+        r = SESSION.post(
+            url, json={}, headers={"x-internal-token": tok}, timeout=TIMEOUT_SEC
+        )
+        body = (r.text or "")[:160].replace("\n", " ")
+        log("info", "auth_check.http", status=r.status_code, body=body)
+    except Exception as e:
+        log("error", "auth_check.exception", error=str(e))
+
 
 # ----------------- LOGGING -----------------
 def log(level: str, msg: str, **ctx):
@@ -642,6 +663,7 @@ def post_items(items: List[Dict[str, Any]]) -> int:
 
 # ----------------- MAIN -----------------
 def main():
+    auth_sanity_check()
     total_posted = 0
     try:
         feeds, defaults = load_sources()
