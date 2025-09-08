@@ -129,14 +129,65 @@ def auth_sanity_check():
         INTERNAL_API_TOKEN_preview=redacted,
         has_quotes=("yes" if tok.startswith('"') or tok.endswith('"') else "no"),
         length=len(tok))
+    if not url:
+        log("warn", "auth_check.skip", reason="no BACKEND_INTERNAL_URL")
+        return
     try:
-        # Intentionally invalid body: if auth is OK, backend should reply 400 Missing fields.
-        headers = {"Authorization": f"Bearer {tok}"} if tok else {}
-        r = SESSION.post(url, json={}, headers=headers, timeout=TIMEOUT_SEC)
-        body = (r.text or "")[:160].replace("\n", " ")
-        log("info", "auth_check.http", status=r.status_code, body=body)
+        # Try Bearer first, then x-internal-token fallback
+        for scheme, headers in [
+            ("bearer", {"Authorization": f"Bearer {tok}"} if tok else {}),
+            ("x-internal-token", {"x-internal-token": tok} if tok else {}),
+        ]:
+            try:
+                r = SESSION.post(url, json={}, headers=headers, timeout=TIMEOUT_SEC)
+                body = (r.text or "")[:160].replace("\n", " ")
+                log("info", "auth_check.http", scheme=scheme, status=r.status_code, body=body)
+                # If backend returns 400 (missing fields), auth worked for this scheme.
+                if r.status_code in (400, 422):
+                    return
+            except Exception as inner:
+                log("warn", "auth_check.try_error", scheme=scheme, error=str(inner))
+        log("warn", "auth_check.failed_all", note="Both bearer and x-internal-token failed")
     except Exception as e:
         log("error", "auth_check.exception", error=str(e))
+
+
+@retry(wait=wait_exponential_jitter(initial=1, max=20), stop=stop_after_attempt(5))
+def post_grant(payload: Dict[str, Any]) -> Dict[str, Any]:
+    if DRY_RUN:
+        log("info", "DRY_RUN on, skipping POST", title=payload.get("title"))
+        return {"ok": True, "dryRun": True}
+
+    if not BACKEND_INTERNAL_URL:
+        hard_fail("Missing BACKEND_INTERNAL_URL")
+
+    # Send BOTH headers to maximize compatibility with your middleware
+    headers = {"Content-Type": "application/json"}
+    if INTERNAL_API_TOKEN:
+        headers["Authorization"] = f"Bearer {INTERNAL_API_TOKEN}"
+        headers["x-internal-token"] = INTERNAL_API_TOKEN
+
+    r = SESSION.post(
+        BACKEND_INTERNAL_URL,
+        json=payload,
+        headers=headers,
+        timeout=TIMEOUT_SEC,
+    )
+    if r.status_code == 429:
+        raise RuntimeError(f"429 from backend: {r.text[:200]}")
+    if r.status_code == 401:
+        # Add helpful context in logs
+        raise RuntimeError(
+            "POST failed 401: Unauthorized. "
+            "Tried both Authorization: Bearer and x-internal-token. "
+            "Check token value and backend auth middleware."
+        )
+    if r.status_code >= 300:
+        raise RuntimeError(f"POST failed {r.status_code}: {r.text[:200]}")
+    try:
+        return r.json()
+    except Exception:
+        return {"ok": r.ok}
 
 
 # ----------------- LOGGING -----------------
@@ -306,13 +357,6 @@ def download_and_readable(url: str) -> Optional[lxml_html.HtmlElement]:
 
 # ----------------- POST TO BACKEND -----------------
 @retry(wait=wait_exponential_jitter(initial=1, max=20), stop=stop_after_attempt(5))
-def post_grant(payload: Dict[str, Any]) -> Dict[str, Any]:
-    if DRY_RUN:
-        log("info", "DRY_RUN on, skipping POST", title=payload.get("title"))
-        return {"ok": True, "dryRun": True}
-
-    if not BACKEND_INTERNAL_URL:
-        hard_fail("Missing BACKEND_INTERNAL_URL")
 
     headers = {"Content-Type": "application/json"}
     # Use Authorization Bearer to match Express "requireAuthOrSkip"
