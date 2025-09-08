@@ -24,6 +24,7 @@ from urllib import robotparser
 import feedfinder2
 
 from requests.adapters import HTTPAdapter, Retry
+from tenacity import RetryError
 
 # ----------------- ENV / CONFIG -----------------
 BACKEND_INTERNAL_URL = os.getenv("BACKEND_INTERNAL_URL")  # e.g., https://.../internal/grants
@@ -617,6 +618,7 @@ def collect_search(name: str, cfg: Dict[str, Any], default_currency: str) -> Lis
     log("info", "Search items", feed=name, count=len(items))
     return items
 
+
 def post_items(items: List[Dict[str, Any]]) -> int:
     posted = 0
     for payload in items:
@@ -626,7 +628,16 @@ def post_items(items: List[Dict[str, Any]]) -> int:
             log("info", "Posted grant", title=payload["title"][:140], id_hint=res.get("id"))
             sleep_ms(400)  # be polite to downstream
         except Exception as e:
-            log("error", "Post failed", error=str(e), title=payload.get("title",""))
+            # Unwrap Tenacity to surface the real error text/status
+            err_txt = str(e)
+            try:
+                if isinstance(e, RetryError) and e.last_attempt:
+                    inner = e.last_attempt.exception()
+                    if inner:
+                        err_txt = f"{type(inner).__name__}: {inner}"
+            except Exception:
+                pass
+            log("error", "Post failed", title=payload.get("title",""), error=err_txt, url=payload.get("url",""))
     return posted
 
 # ----------------- MAIN -----------------
