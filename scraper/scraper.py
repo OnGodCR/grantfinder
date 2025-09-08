@@ -45,6 +45,17 @@ TIMEOUT_SEC          = int(os.getenv("SCRAPER_HTTP_TIMEOUT", os.getenv("SCRAPER_
 REQUEST_DELAY_MS     = int(os.getenv("SCRAPER_DELAY_MS", os.getenv("SCRAPER_REQUEST_DELAY_MS", "300")))
 USER_AGENT           = os.getenv("SCRAPER_UA", os.getenv("SCRAPER_USER_AGENT", "GrantFinderBot/1.0 (+https://example.com)"))
 
+# Discovery / fan-out
+ALLOW_EXTERNAL_FANOUT = (os.getenv("SCRAPER_ALLOW_EXTERNAL_FANOUT", "true") or "true").lower() == "true"
+FANOUT_MAX_HOSTS      = int(os.getenv("SCRAPER_FANOUT_MAX_HOSTS", "40"))
+FANOUT_DEPTH          = int(os.getenv("SCRAPER_FANOUT_DEPTH", "2"))
+ALLOWED_TLDS          = set(((os.getenv("SCRAPER_ALLOWED_TLDS", ".gov,.edu,.org,.int") or "").lower()).split(","))
+
+# Relevance filter knobs
+RELEVANCE_MIN_SCORE   = int(os.getenv("SCRAPER_RELEVANCE_MIN_SCORE", "6"))
+TITLE_WEIGHT          = 4
+BODY_WEIGHT           = 1
+
 SERPAPI_KEY          = _dequote(os.getenv("SERPAPI_KEY"))      # optional
 BING_API_KEY         = _dequote(os.getenv("BING_API_KEY"))     # optional
 
