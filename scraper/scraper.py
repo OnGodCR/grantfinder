@@ -34,6 +34,7 @@ def _dequote(s: str | None) -> str:
     if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
         s = s[1:-1].strip()
     return s
+
 # ----------------- FILTERS / LIMITS -----------------
 # Keywords used to keep only grant-like items from RSS/HTML.
 # You can override with SCRAPER_KEYWORDS (comma-separated).
@@ -48,6 +49,26 @@ GRANT_KEYWORDS = [
 # Max response bytes we’ll read from any HTTP fetch
 MAX_BODY = int(os.getenv("SCRAPER_MAX_BODY_BYTES", "2000000"))
 
+# ----------------- HINTS FOR SCORING/PARSING -----------------
+# Comma-separated env overrides:
+#   SCRAPER_DEADLINE_HINTS="deadline,due date,applications due"
+#   SCRAPER_AMOUNT_HINTS="budget,funding amount,award,up to,$,€"
+DEADLINE_HINTS = [
+    h.strip().lower()
+    for h in (os.getenv("SCRAPER_DEADLINE_HINTS") or
+              "deadline, due date, submission deadline, applications due, "
+              "closing date, full proposal due, letter of intent due, LOI due"
+             ).split(",")
+    if h.strip()
+]
+
+AMOUNT_HINTS = [
+    h.strip().lower()
+    for h in (os.getenv("SCRAPER_AMOUNT_HINTS") or
+              "amount, award, funding, budget, total costs, up to, maximum, min, max, $, €, £"
+             ).split(",")
+    if h.strip()
+]
 
 BACKEND_INTERNAL_URL = _dequote(os.getenv("BACKEND_INTERNAL_URL"))  # e.g., https://.../api/internal/grants
 INTERNAL_API_TOKEN   = _dequote(os.getenv("INTERNAL_API_TOKEN"))
@@ -103,16 +124,15 @@ def auth_sanity_check():
     url = BACKEND_INTERNAL_URL or ""
     tok = (INTERNAL_API_TOKEN or "")
     redacted = tok[:6] + "…" + tok[-6:] if len(tok) >= 12 else "(too-short)"
-    log("info", "auth_check.env", 
-        BACKEND_INTERNAL_URL=url, 
+    log("info", "auth_check.env",
+        BACKEND_INTERNAL_URL=url,
         INTERNAL_API_TOKEN_preview=redacted,
         has_quotes=("yes" if tok.startswith('"') or tok.endswith('"') else "no"),
         length=len(tok))
     try:
-        # Intentionally invalid body: if auth is OK, backend replies 400 Missing fields.
-        r = SESSION.post(
-            url, json={}, headers={"x-internal-token": tok}, timeout=TIMEOUT_SEC
-        )
+        # Intentionally invalid body: if auth is OK, backend should reply 400 Missing fields.
+        headers = {"Authorization": f"Bearer {tok}"} if tok else {}
+        r = SESSION.post(url, json={}, headers=headers, timeout=TIMEOUT_SEC)
         body = (r.text or "")[:160].replace("\n", " ")
         log("info", "auth_check.http", status=r.status_code, body=body)
     except Exception as e:
