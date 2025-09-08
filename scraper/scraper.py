@@ -28,39 +28,26 @@ from requests.adapters import HTTPAdapter, Retry
 from tenacity import RetryError
 
 # ----------------- ENV / CONFIG -----------------
-BACKEND_INTERNAL_URL = os.getenv("BACKEND_INTERNAL_URL")  # e.g., https://.../internal/grants
-INTERNAL_API_TOKEN   = os.getenv("INTERNAL_API_TOKEN")    # required unless backend sets SKIP_AUTH=1
+def _dequote(s: str | None) -> str:
+    s = (s or "").strip()
+    # strip one pair of surrounding quotes if present
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        s = s[1:-1].strip()
+    return s
+
+BACKEND_INTERNAL_URL = _dequote(os.getenv("BACKEND_INTERNAL_URL"))  # e.g., https://.../api/internal/grants
+INTERNAL_API_TOKEN   = _dequote(os.getenv("INTERNAL_API_TOKEN"))
+
 BATCH_LIMIT          = int(os.getenv("SCRAPER_BATCH_LIMIT", "10"))
-LOG_LEVEL            = os.getenv("SCRAPER_LOG_LEVEL", "info").lower()
-DRY_RUN              = os.getenv("SCRAPER_DRY_RUN", "false").lower() == "true"
-TIMEOUT_SEC          = int(os.getenv("SCRAPER_HTTP_TIMEOUT", "30"))
-REQUEST_DELAY_MS     = int(os.getenv("SCRAPER_DELAY_MS", "300"))
-USER_AGENT           = os.getenv("SCRAPER_UA", "")  # if empty we set a browser UA below
-MAX_BODY             = int(os.getenv("SCRAPER_MAX_BODY_BYTES", "2000000"))  # 2 MB
+LOG_LEVEL            = (os.getenv("SCRAPER_LOG_LEVEL", "info") or "info").lower()
+DRY_RUN              = (os.getenv("SCRAPER_DRY_RUN", "false") or "false").lower() == "true"
+TIMEOUT_SEC          = int(os.getenv("SCRAPER_HTTP_TIMEOUT", os.getenv("SCRAPER_TIMEOUT_SEC", "30")))
+REQUEST_DELAY_MS     = int(os.getenv("SCRAPER_DELAY_MS", os.getenv("SCRAPER_REQUEST_DELAY_MS", "300")))
+USER_AGENT           = os.getenv("SCRAPER_UA", os.getenv("SCRAPER_USER_AGENT", "GrantFinderBot/1.0 (+https://example.com)"))
 
-# Search providers (choose one)
-SERPAPI_KEY          = os.getenv("SERPAPI_KEY")      # optional
-BING_API_KEY         = os.getenv("BING_API_KEY")     # optional
+SERPAPI_KEY          = _dequote(os.getenv("SERPAPI_KEY"))      # optional
+BING_API_KEY         = _dequote(os.getenv("BING_API_KEY"))     # optional
 
-# Discovery / fan-out
-ALLOW_EXTERNAL_FANOUT   = os.getenv("SCRAPER_ALLOW_EXTERNAL_FANOUT", "true").lower() == "true"
-FANOUT_MAX_HOSTS        = int(os.getenv("SCRAPER_FANOUT_MAX_HOSTS", "40"))
-FANOUT_DEPTH            = int(os.getenv("SCRAPER_FANOUT_DEPTH", "2"))
-ALLOWED_TLDS            = set((os.getenv("SCRAPER_ALLOWED_TLDS", ".gov,.edu,.org,.int").lower()).split(","))
-
-# Relevance filter knobs
-RELEVANCE_MIN_SCORE     = int(os.getenv("SCRAPER_RELEVANCE_MIN_SCORE", "6"))   # tune 4..10
-TITLE_WEIGHT            = 4
-BODY_WEIGHT             = 1
-
-# Keyword sets
-GRANT_KEYWORDS = {
-    "grant","funding","fellowship","rfp","cfp","call for proposals","apply","application",
-    "award","scholarship","seed funding","microgrant","mini-grant","matching funds","solicitation",
-    "program solicitation","funding opportunity","opportunity announcement","nofo","foa"
-}
-DEADLINE_HINTS = {"deadline","due","closes","closing date","close date","apply by","submission deadline"}
-AMOUNT_HINTS   = {"amount","budget","award","max","up to","$","usd","eur","gbp"}
 
 def _build_session() -> requests.Session:
     s = requests.Session()
