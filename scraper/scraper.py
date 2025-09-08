@@ -34,6 +34,20 @@ def _dequote(s: str | None) -> str:
     if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
         s = s[1:-1].strip()
     return s
+# ----------------- FILTERS / LIMITS -----------------
+# Keywords used to keep only grant-like items from RSS/HTML.
+# You can override with SCRAPER_KEYWORDS (comma-separated).
+GRANT_KEYWORDS = [
+    kw.strip().lower() for kw in
+    (os.getenv("SCRAPER_KEYWORDS") or
+     "grant, funding, fellowship, rfp, rfa, solicitation, opportunity, award"
+    ).split(",")
+    if kw.strip()
+]
+
+# Max response bytes we’ll read from any HTTP fetch
+MAX_BODY = int(os.getenv("SCRAPER_MAX_BODY_BYTES", "2000000"))
+
 
 BACKEND_INTERNAL_URL = _dequote(os.getenv("BACKEND_INTERNAL_URL"))  # e.g., https://.../api/internal/grants
 INTERNAL_API_TOKEN   = _dequote(os.getenv("INTERNAL_API_TOKEN"))
