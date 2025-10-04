@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, useUser } from '@clerk/nextjs';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import TopNavbar from '@/components/TopNavbar';
 import { User, Mail, Calendar, Award, Bookmark, TrendingUp, Settings, Bell, Shield, HelpCircle } from 'lucide-react';
@@ -9,7 +9,8 @@ import UserProfileManager from '@/components/UserProfileManager';
 import { UserProfile, getDefaultUserProfile } from '@/lib/matchScore';
 
 export default function ProfilePage() {
-  const { user, isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState('overview');
   const [researcherProfile, setResearcherProfile] = useState<UserProfile>(getDefaultUserProfile());
   const [profileData, setProfileData] = useState({
