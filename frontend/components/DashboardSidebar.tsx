@@ -16,8 +16,6 @@ import {
 const navigation = [
   { name: 'Discover', href: '/discover', icon: Search },
   { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark },
-  { name: 'Notifications', href: '/notifications', icon: Bell },
-  { name: 'Profile', href: '/profile', icon: User },
 ];
 
 export default function DashboardSidebar() {

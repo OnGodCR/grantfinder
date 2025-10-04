@@ -75,7 +75,7 @@ export default function ProfilePage() {
         <TopNavbar onSearch={() => {}} />
         
         <div className="p-8 bg-slate-900">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             {/* Header */}
             <div className="mb-8">
               <h1 className="text-4xl font-bold text-white mb-2">Profile Settings</h1>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Search, Bell, User, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
 
 interface TopNavbarProps {
   onSearch: (query: string) => void;
@@ -37,19 +38,19 @@ export default function TopNavbar({ onSearch }: TopNavbarProps) {
         {/* Right side actions */}
         <div className="flex items-center space-x-3">
           {/* Notifications */}
-          <button className="relative p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all duration-200 hover:scale-105">
+          <Link href="/notifications" className="relative p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all duration-200 hover:scale-105">
             <Bell className="h-5 w-5" />
             <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-          </button>
+          </Link>
 
           {/* Profile Dropdown */}
           <div className="relative">
-            <button className="flex items-center space-x-3 p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all duration-200 hover:scale-105">
+            <Link href="/profile" className="flex items-center space-x-3 p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all duration-200 hover:scale-105">
               <div className="w-9 h-9 bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl flex items-center justify-center">
                 <User className="w-5 h-5" />
               </div>
               <ChevronDown className="h-4 w-4" />
-            </button>
+            </Link>
           </div>
         </div>
       </div>

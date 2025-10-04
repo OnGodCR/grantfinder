@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { fetchGrantsAuto } from '@/lib/grants';
-import { calculateBatchMatchScores, getDefaultUserProfile } from '@/lib/matchScore';
+import { calculateBatchMatchScores, getDefaultUserProfile, UserProfile } from '@/lib/matchScore';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import TopNavbar from '@/components/TopNavbar';
 import ModernGrantCard from '@/components/ModernGrantCard';
@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [userProfile, setUserProfile] = useState<UserProfile>(getDefaultUserProfile());
 
   useEffect(() => {
     const fetchGrants = async () => {
@@ -42,7 +43,6 @@ export default function DashboardPage() {
         if (response.ok && response.body) {
           const grantsData = response.body.items || response.body.grants || [];
           // Calculate match scores for all grants
-          const userProfile = getDefaultUserProfile();
           const grantsWithScores = calculateBatchMatchScores(grantsData, userProfile);
           setGrants(grantsWithScores);
         } else {
@@ -98,7 +98,7 @@ export default function DashboardPage() {
         <div className="flex">
           {/* Main Content */}
           <div className="flex-1 p-8 bg-slate-900">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-6xl mx-auto">
               <div className="mb-8">
                 <h1 className="text-4xl font-bold mb-2 text-white">Discover Grants</h1>
                 <p className="text-slate-400 text-lg">Find the perfect funding opportunities for your research</p>

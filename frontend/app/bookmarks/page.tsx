@@ -126,7 +126,7 @@ export default function BookmarksPage() {
         <div className="flex">
           {/* Main Content */}
           <div className="flex-1 p-8 bg-slate-900">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-6xl mx-auto">
               <div className="mb-8">
                 <div className="flex items-center mb-4">
                   <Bookmark className="w-8 h-8 text-teal-400 mr-3" />
