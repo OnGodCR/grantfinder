@@ -41,7 +41,21 @@ def _dequote(s: str | None) -> str:
 GRANT_KEYWORDS = [
     kw.strip().lower() for kw in
     (os.getenv("SCRAPER_KEYWORDS") or
-     "grant, funding, fellowship, rfp, rfa, solicitation, opportunity, award"
+     "grant, funding, fellowship, rfp, rfa, solicitation, opportunity, award, "
+     "scholarship, bursary, stipend, prize, competition, challenge, initiative, "
+     "program, project, research, innovation, startup, accelerator, incubator, "
+     "venture, investment, capital, finance, financial, support, assistance, "
+     "sponsorship, donation, contribution, endowment, bequest, legacy, "
+     "philanthropy, charitable, nonprofit, foundation, trust, fund, "
+     "application, apply, deadline, due, closing, submission, proposal, "
+     "request, call, announcement, notice, circular, bulletin, "
+     "government, federal, state, local, municipal, public, private, "
+     "corporate, business, commercial, industry, sector, field, "
+     "education, academic, university, college, school, institution, "
+     "research, development, innovation, technology, science, "
+     "arts, culture, humanities, social, community, health, medical, "
+     "environment, climate, sustainability, energy, renewable, "
+     "international, global, worldwide, cross-border, transnational"
     ).split(",")
     if kw.strip()
 ]
@@ -82,9 +96,9 @@ USER_AGENT           = os.getenv("SCRAPER_UA", os.getenv("SCRAPER_USER_AGENT", "
 
 # Discovery / fan-out
 ALLOW_EXTERNAL_FANOUT = (os.getenv("SCRAPER_ALLOW_EXTERNAL_FANOUT", "true") or "true").lower() == "true"
-FANOUT_MAX_HOSTS      = int(os.getenv("SCRAPER_FANOUT_MAX_HOSTS", "40"))
-FANOUT_DEPTH          = int(os.getenv("SCRAPER_FANOUT_DEPTH", "2"))
-ALLOWED_TLDS          = set(((os.getenv("SCRAPER_ALLOWED_TLDS", ".gov,.edu,.org,.int") or "").lower()).split(","))
+FANOUT_MAX_HOSTS      = int(os.getenv("SCRAPER_FANOUT_MAX_HOSTS", "100"))
+FANOUT_DEPTH          = int(os.getenv("SCRAPER_FANOUT_DEPTH", "3"))
+ALLOWED_TLDS          = set(((os.getenv("SCRAPER_ALLOWED_TLDS", ".gov,.edu,.org,.int,.com,.net,.uk,.ca,.au,.de,.fr,.es,.it,.nl,.se,.no,.dk,.fi,.ch,.at,.be,.ie,.pt,.pl,.cz,.hu,.ro,.bg,.hr,.si,.sk,.lt,.lv,.ee,.cy,.mt,.lu") or "").lower()).split(","))
 
 # Relevance filter knobs
 RELEVANCE_MIN_SCORE   = int(os.getenv("SCRAPER_RELEVANCE_MIN_SCORE", "6"))
@@ -93,6 +107,9 @@ BODY_WEIGHT           = 1
 
 SERPAPI_KEY          = _dequote(os.getenv("SERPAPI_KEY"))      # optional
 BING_API_KEY         = _dequote(os.getenv("BING_API_KEY"))     # optional
+GOOGLE_API_KEY       = _dequote(os.getenv("GOOGLE_API_KEY"))   # optional
+GOOGLE_CSE_ID        = _dequote(os.getenv("GOOGLE_CSE_ID"))    # optional
+DUCKDUCKGO_API_KEY   = _dequote(os.getenv("DUCKDUCKGO_API_KEY")) # optional
 
 
 def _build_session() -> requests.Session:
@@ -356,27 +373,6 @@ def download_and_readable(url: str) -> Optional[lxml_html.HtmlElement]:
             return None
 
 # ----------------- POST TO BACKEND -----------------
-@retry(wait=wait_exponential_jitter(initial=1, max=20), stop=stop_after_attempt(5))
-
-    headers = {"Content-Type": "application/json"}
-    # Use Authorization Bearer to match Express "requireAuthOrSkip"
-    if INTERNAL_API_TOKEN:
-        headers["Authorization"] = f"Bearer {INTERNAL_API_TOKEN}"
-
-    r = SESSION.post(
-        BACKEND_INTERNAL_URL,
-        json=payload,
-        headers=headers,
-        timeout=TIMEOUT_SEC,
-    )
-    if r.status_code == 429:
-        raise RuntimeError(f"429 from backend: {r.text[:200]}")
-    if r.status_code >= 300:
-        raise RuntimeError(f"POST failed {r.status_code}: {r.text[:200]}")
-    try:
-        return r.json()
-    except Exception:
-        return {"ok": r.ok}
 
 def to_payload(source: str, url: str, title: str, description: str,
                eligibility: str,
@@ -637,36 +633,100 @@ def collect_html(name: str, cfg: Dict[str, Any], default_currency: str) -> List[
 
 def search_web(queries: List[str], max_results: int) -> List[str]:
     urls: List[str] = []
+    
+    # Try multiple search engines for better coverage
+    search_engines = []
+    
     if SERPAPI_KEY:
-        for q in queries:
-            try:
-                r = SESSION.get("https://serpapi.com/search.json",
-                                params={"engine":"google", "q":q, "num":max_results, "api_key":SERPAPI_KEY},
-                                timeout=TIMEOUT_SEC)
-                if r.status_code < 400:
-                    data = r.json()
-                    for item in (data.get("organic_results") or [])[:max_results]:
-                        u = item.get("link")
-                        if u: urls.append(u)
-            except Exception as e:
-                log("warn", "SerpAPI search failed", error=str(e), query=q)
-    elif BING_API_KEY:
-        headers = {"Ocp-Apim-Subscription-Key": BING_API_KEY}
-        for q in queries:
-            try:
-                r = SESSION.get("https://api.bing.microsoft.com/v7.0/search",
-                                params={"q": q, "count": max_results},
-                                headers=headers, timeout=TIMEOUT_SEC)
-                if r.status_code < 400:
-                    data = r.json()
-                    for item in (data.get("webPages", {}).get("value") or [])[:max_results]:
-                        u = item.get("url")
-                        if u: urls.append(u)
-            except Exception as e:
-                log("warn", "Bing search failed", error=str(e), query=q)
-    else:
-        log("warn", "Search disabled (no SERPAPI_KEY or BING_API_KEY)")
+        search_engines.append(("SerpAPI", search_serpapi))
+    if BING_API_KEY:
+        search_engines.append(("Bing", search_bing))
+    if GOOGLE_API_KEY and GOOGLE_CSE_ID:
+        search_engines.append(("Google", search_google))
+    
+    # If no API keys, try DuckDuckGo (no API key required)
+    if not search_engines:
+        search_engines.append(("DuckDuckGo", search_duckduckgo))
+    
+    for engine_name, search_func in search_engines:
+        try:
+            engine_urls = search_func(queries, max_results)
+            urls.extend(engine_urls)
+            log("info", f"Search engine {engine_name} found {len(engine_urls)} URLs")
+        except Exception as e:
+            log("warn", f"Search engine {engine_name} failed", error=str(e))
+    
+    # Remove duplicates while preserving order
     return list(dict.fromkeys(urls))
+
+def search_serpapi(queries: List[str], max_results: int) -> List[str]:
+    urls = []
+    for q in queries:
+        try:
+            r = SESSION.get("https://serpapi.com/search.json",
+                            params={"engine":"google", "q":q, "num":max_results, "api_key":SERPAPI_KEY},
+                            timeout=TIMEOUT_SEC)
+            if r.status_code < 400:
+                data = r.json()
+                for item in (data.get("organic_results") or [])[:max_results]:
+                    u = item.get("link")
+                    if u: urls.append(u)
+        except Exception as e:
+            log("warn", "SerpAPI search failed", error=str(e), query=q)
+    return urls
+
+def search_bing(queries: List[str], max_results: int) -> List[str]:
+    urls = []
+    headers = {"Ocp-Apim-Subscription-Key": BING_API_KEY}
+    for q in queries:
+        try:
+            r = SESSION.get("https://api.bing.microsoft.com/v7.0/search",
+                            params={"q": q, "count": max_results},
+                            headers=headers, timeout=TIMEOUT_SEC)
+            if r.status_code < 400:
+                data = r.json()
+                for item in (data.get("webPages", {}).get("value") or [])[:max_results]:
+                    u = item.get("url")
+                    if u: urls.append(u)
+        except Exception as e:
+            log("warn", "Bing search failed", error=str(e), query=q)
+    return urls
+
+def search_google(queries: List[str], max_results: int) -> List[str]:
+    urls = []
+    for q in queries:
+        try:
+            r = SESSION.get("https://www.googleapis.com/customsearch/v1",
+                            params={"key": GOOGLE_API_KEY, "cx": GOOGLE_CSE_ID, 
+                                   "q": q, "num": min(max_results, 10)},
+                            timeout=TIMEOUT_SEC)
+            if r.status_code < 400:
+                data = r.json()
+                for item in (data.get("items") or [])[:max_results]:
+                    u = item.get("link")
+                    if u: urls.append(u)
+        except Exception as e:
+            log("warn", "Google search failed", error=str(e), query=q)
+    return urls
+
+def search_duckduckgo(queries: List[str], max_results: int) -> List[str]:
+    urls = []
+    for q in queries:
+        try:
+            # DuckDuckGo doesn't have a public API, so we'll use their instant answer API
+            # This is limited but better than nothing
+            r = SESSION.get("https://api.duckduckgo.com/",
+                            params={"q": q, "format": "json", "no_html": "1", "skip_disambig": "1"},
+                            timeout=TIMEOUT_SEC)
+            if r.status_code < 400:
+                data = r.json()
+                # DuckDuckGo instant answers don't provide many URLs, but we can try
+                for item in (data.get("RelatedTopics") or [])[:max_results]:
+                    if isinstance(item, dict) and "FirstURL" in item:
+                        urls.append(item["FirstURL"])
+        except Exception as e:
+            log("warn", "DuckDuckGo search failed", error=str(e), query=q)
+    return urls
 
 def collect_search(name: str, cfg: Dict[str, Any], default_currency: str) -> List[Dict[str, Any]]:
     queries = cfg.get("queries", []) or []

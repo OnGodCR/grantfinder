@@ -17,6 +17,11 @@ const ORIGINS = (process.env.FRONTEND_ORIGINS || "")
   .map(s => s.trim())
   .filter(Boolean);
 
+// Add default Vercel patterns if no origins specified
+if (ORIGINS.length === 0) {
+  ORIGINS.push("https://*.vercel.app", "http://localhost:3000", "https://localhost:3000");
+}
+
 // simple wildcard matcher for "*.vercel.app" etc.
 function matchOrigin(origin: string, pattern: string): boolean {
   if (pattern === "*") return true;
@@ -33,7 +38,7 @@ const corsOptions: CorsOptions = {
     return cb(ok ? null : new Error("Not allowed by CORS"), ok);
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-internal-token"],
   credentials: false, // keep false unless you need cookies
   maxAge: 86400,
 };

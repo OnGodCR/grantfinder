@@ -12,7 +12,7 @@ export type FetchResult = {
 };
 
 export async function fetchGrants(q: string, token?: string): Promise<FetchResult> {
-  const url = `${BASE}/api/internal/grants`;
+  const url = `${BASE}/api/internal/grants/search`;
   try {
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (token) headers.authorization = `Bearer ${token}`;

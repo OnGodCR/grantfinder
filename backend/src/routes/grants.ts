@@ -15,7 +15,12 @@ function requireAuthOrSkip(req: Request, res: Response, next: NextFunction) {
 
 /** ---------- internal token auth (scraper insert) ---------- */
 function requireInternalToken(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers["x-internal-token"];
+  // Check both x-internal-token header and Authorization Bearer
+  const headerToken = req.headers["x-internal-token"];
+  const authHeader = req.headers.authorization || "";
+  const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  
+  const token = headerToken || bearerToken;
   if (!token || token !== process.env.INTERNAL_API_TOKEN) {
     return res.status(401).json({ error: "Unauthorized" });
   }

@@ -1,27 +1,25 @@
-# sources.yml
+# sources.yml - Comprehensive Internet-Wide Grant Search
 defaults:
   currency: USD
 
 feeds:
-  # --- NSF official RSS feed ---
+  # === FEDERAL GOVERNMENT SOURCES ===
   - name: "NSF Funding"
     type: rss
     url: "https://www.nsf.gov/rss/rss_www_funding.xml"
-    limit: 25
+    limit: 30
 
-  # --- NIH weekly funding opportunities RSS ---
   - name: "NIH Funding"
     type: rss
     url: "https://grants.nih.gov/grants/guide/WeeklyIndex.cfm?RSSFeed=FundingOpportunities"
-    limit: 25
+    limit: 30
 
-  # --- Grants.gov sitemap (covers most U.S. federal grants) ---
   - name: "Grants.gov Sitemap"
     type: sitemap
     url: "https://www.grants.gov/sitemap.xml"
     include_patterns:
       - "/web/grants/view-"
-    limit: 20
+    limit: 50
     rules:
       title:
         css: "h1, h2, .opportunity-title, .page-title"
@@ -35,7 +33,28 @@ feeds:
       eligibility:
         css: ".eligibility, .who-can-apply"
 
-  # --- Ford Foundation grants (example HTML crawl of a nonprofit foundation) ---
+  - name: "USA.gov Grants"
+    type: search
+    queries:
+      - "site:grants.gov funding opportunity"
+      - "site:sam.gov contract opportunity"
+      - "site:beta.sam.gov grant opportunity"
+    max_results_per_query: 15
+    same_host_only: false
+    limit: 25
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Closing|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who-can-apply"
+
+  # === FOUNDATION GRANTS ===
   - name: "Ford Foundation Grants"
     type: html
     start_urls:
@@ -48,7 +67,7 @@ feeds:
       - "/terms"
     max_pages: 60
     per_page_delay_ms: 400
-    limit: 15
+    limit: 20
     rules:
       title:
         css: "h1, h2, .entry-title"
@@ -61,18 +80,13 @@ feeds:
       eligibility:
         css: ".eligibility, .who, .requirements"
 
-  # --- Web search for private climate grants ---
-  - name: "Search: climate nonprofit grants"
+  - name: "Gates Foundation Grants"
     type: search
     queries:
-      - "site:.org climate change grant application"
-      - "site:.edu research funding climate opportunity"
+      - "site:gatesfoundation.org grant application"
+      - "site:gatesfoundation.org funding opportunity"
     max_results_per_query: 10
     same_host_only: true
-    include_patterns:
-      - "grant"
-      - "funding"
-      - "opportunity"
     limit: 15
     rules:
       title:
@@ -83,5 +97,228 @@ feeds:
         regex: "(?:Deadline|Apply by|Due)[:\\s]+([^\\n<]+)"
       amount:
         regex: "(?:Up to|Maximum|Award|Budget)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  # === INTERNATIONAL GRANTS ===
+  - name: "EU Horizon Europe"
+    type: search
+    queries:
+      - "site:ec.europa.eu horizon europe funding"
+      - "site:ec.europa.eu research and innovation grants"
+    max_results_per_query: 15
+    same_host_only: false
+    limit: 20
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Closing|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  - name: "UK Research Councils"
+    type: search
+    queries:
+      - "site:ukri.org funding opportunity"
+      - "site:epsrc.ukri.org grant application"
+      - "site:bbsrc.ukri.org funding"
+    max_results_per_query: 10
+    same_host_only: false
+    limit: 15
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Closing|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  # === ACADEMIC AND RESEARCH GRANTS ===
+  - name: "University Research Grants"
+    type: search
+    queries:
+      - "site:.edu research funding opportunity"
+      - "site:.edu grant application deadline"
+      - "site:.edu fellowship application"
+    max_results_per_query: 20
+    same_host_only: false
+    limit: 30
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Apply by|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  # === NONPROFIT AND NGO GRANTS ===
+  - name: "Nonprofit Grants"
+    type: search
+    queries:
+      - "site:.org grant application"
+      - "site:.org funding opportunity"
+      - "site:.org fellowship application"
+    max_results_per_query: 25
+    same_host_only: false
+    limit: 40
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Apply by|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  # === CORPORATE GRANTS AND CSR ===
+  - name: "Corporate Grants"
+    type: search
+    queries:
+      - "corporate grant application"
+      - "company foundation funding"
+      - "corporate social responsibility grants"
+    max_results_per_query: 20
+    same_host_only: false
+    limit: 30
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Apply by|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  # === TECHNOLOGY AND INNOVATION GRANTS ===
+  - name: "Tech Innovation Grants"
+    type: search
+    queries:
+      - "technology innovation grant"
+      - "startup funding opportunity"
+      - "innovation challenge grant"
+      - "SBIR grant application"
+    max_results_per_query: 20
+    same_host_only: false
+    limit: 30
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Apply by|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  # === CLIMATE AND ENVIRONMENT GRANTS ===
+  - name: "Climate Grants"
+    type: search
+    queries:
+      - "climate change grant application"
+      - "environmental funding opportunity"
+      - "sustainability grant"
+      - "green technology funding"
+    max_results_per_query: 20
+    same_host_only: false
+    limit: 30
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Apply by|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  # === HEALTH AND MEDICAL GRANTS ===
+  - name: "Health Grants"
+    type: search
+    queries:
+      - "health research grant application"
+      - "medical funding opportunity"
+      - "public health grant"
+      - "biomedical research funding"
+    max_results_per_query: 20
+    same_host_only: false
+    limit: 30
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Apply by|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  # === ARTS AND CULTURE GRANTS ===
+  - name: "Arts Grants"
+    type: search
+    queries:
+      - "arts grant application"
+      - "cultural funding opportunity"
+      - "creative arts grant"
+      - "humanities funding"
+    max_results_per_query: 15
+    same_host_only: false
+    limit: 25
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Apply by|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  # === EDUCATION GRANTS ===
+  - name: "Education Grants"
+    type: search
+    queries:
+      - "education grant application"
+      - "educational funding opportunity"
+      - "teacher grant"
+      - "student funding"
+    max_results_per_query: 20
+    same_host_only: false
+    limit: 30
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Apply by|Due)[:\\s]+([^\\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\\s\\$£€]*([\\$£€]?[\\d,\\.]+(?:\\s?-\\s?[\\$£€]?[\\d,\\.]+)?)"
       eligibility:
         css: ".eligibility, .who, .requirements"
