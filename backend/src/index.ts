@@ -39,7 +39,7 @@ const corsOptions: CorsOptions = {
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "x-internal-token"],
-  credentials: false, // keep false unless you need cookies
+  credentials: true, // enable credentials for Clerk authentication
   maxAge: 86400,
 };
 

@@ -12,7 +12,7 @@ export type FetchResult = {
 };
 
 export async function fetchGrants(q: string, token?: string): Promise<FetchResult> {
-  const url = `${BASE}/api/internal/grants/search`;
+  const url = `${BASE}/api/grants`;
   try {
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (token) headers.authorization = `Bearer ${token}`;
@@ -21,6 +21,7 @@ export async function fetchGrants(q: string, token?: string): Promise<FetchResul
       method: 'POST',
       headers,
       body: JSON.stringify({ q }),
+      credentials: 'include', // include credentials for Clerk authentication
     });
 
     const ctype = res.headers.get('content-type') || '';

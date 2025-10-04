@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { fetchGrants } from "@/lib/api"; // make sure you added this helper
+import { fetchGrantsAuto } from "@/lib/grants"; // use the correct search API
 import ScoreBadge from "@/components/ScoreBadge";
 
 export default function DiscoverPage() {
@@ -15,12 +15,12 @@ export default function DiscoverPage() {
     if (!isLoaded) return;
     (async () => {
       try {
-        const res = await fetchGrants({
-          q: "",
-          limit: 24,
-          clerkId: user?.id,
-        });
-        setGrants(res.items || []);
+        const res = await fetchGrantsAuto("", user?.id);
+        if (res.ok && res.body) {
+          setGrants(res.body.items || res.body.grants || []);
+        } else {
+          console.error("fetchGrants failed:", res.error || "Unknown error");
+        }
       } catch (err) {
         console.error("fetchGrants failed:", err);
       } finally {
