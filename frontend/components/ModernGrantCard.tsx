@@ -57,7 +57,7 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked = fals
 
   return (
     <div
-      className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 hover:border-teal-200"
+      className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-200/50 hover:border-teal-200/50 hover:-translate-y-1 group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -72,58 +72,59 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked = fals
         </div>
         
         {/* Match Score Circle */}
-        <div className="ml-4 flex-shrink-0">
-          <div className="relative w-16 h-16">
-            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+        <div className="ml-6 flex-shrink-0">
+          <div className="relative w-20 h-20">
+            <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 36 36">
               <path
                 className="text-slate-200"
                 stroke="currentColor"
-                strokeWidth="3"
+                strokeWidth="2.5"
                 fill="none"
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
               />
               <path
                 className={matchScore >= 80 ? 'text-teal-500' : matchScore >= 60 ? 'text-blue-500' : 'text-orange-500'}
                 stroke="currentColor"
-                strokeWidth="3"
+                strokeWidth="2.5"
                 fill="none"
                 strokeDasharray={`${matchScore}, 100`}
+                strokeLinecap="round"
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xs font-semibold text-slate-700">{matchScore}%</span>
+              <span className="text-sm font-bold text-slate-800">{matchScore}%</span>
             </div>
           </div>
-          <p className="text-xs text-slate-500 text-center mt-1">Match Score</p>
+          <p className="text-xs text-slate-500 text-center mt-2 font-medium">Match Score</p>
         </div>
       </div>
 
       {/* Grant Details */}
-      <div className="space-y-3 mb-4">
+      <div className="space-y-4 mb-6">
         {grant.agency && (
           <div className="flex items-center text-sm text-slate-600">
-            <span className="font-medium">Agency:</span>
-            <span className="ml-2">{grant.agency}</span>
+            <Building className="w-4 h-4 mr-3 text-slate-400" />
+            <span className="font-medium">{grant.agency}</span>
           </div>
         )}
         
         {(grant.fundingMin || grant.fundingMax) && (
           <div className="flex items-center text-sm text-slate-600">
-            <DollarSign className="w-4 h-4 mr-2" />
-            <span>{formatFunding(grant.fundingMin, grant.fundingMax, grant.currency)}</span>
+            <DollarSign className="w-4 h-4 mr-3 text-slate-400" />
+            <span className="font-medium">{formatFunding(grant.fundingMin, grant.fundingMax, grant.currency)}</span>
           </div>
         )}
         
         {grant.deadline && (
           <div className="flex items-center text-sm">
-            <Calendar className="w-4 h-4 mr-2 text-slate-600" />
-            <span className="text-slate-600">Deadline:</span>
-            <span className={`ml-2 font-medium ${getUrgencyColor(daysUntilDeadline!)}`}>
+            <Calendar className="w-4 h-4 mr-3 text-slate-400" />
+            <span className="text-slate-600 font-medium">Deadline:</span>
+            <span className={`ml-2 font-semibold ${getUrgencyColor(daysUntilDeadline!)}`}>
               {new Date(grant.deadline).toLocaleDateString()}
             </span>
             {daysUntilDeadline && (
-              <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
+              <span className={`ml-3 text-xs px-3 py-1 rounded-full font-semibold ${
                 daysUntilDeadline <= 7 ? 'bg-red-100 text-red-700' :
                 daysUntilDeadline <= 14 ? 'bg-orange-100 text-orange-700' :
                 daysUntilDeadline <= 30 ? 'bg-yellow-100 text-yellow-700' :
@@ -137,13 +138,13 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked = fals
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-        <div className="flex items-center space-x-3">
+      <div className="flex items-center justify-between pt-5 border-t border-slate-200/50">
+        <div className="flex items-center space-x-2">
           <button
             onClick={() => onBookmark?.(grant.id)}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-3 rounded-xl transition-all duration-200 ${
               isBookmarked
-                ? 'bg-teal-100 text-teal-600'
+                ? 'bg-teal-100 text-teal-600 shadow-sm'
                 : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
             }`}
           >
@@ -155,14 +156,14 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked = fals
               href={grant.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+              className="p-3 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all duration-200"
             >
               <ExternalLink className="w-4 h-4" />
             </a>
           )}
         </div>
         
-        <button className="px-4 py-2 bg-teal-500 text-white text-sm font-medium rounded-lg hover:bg-teal-600 transition-colors">
+        <button className="px-5 py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white text-sm font-semibold rounded-xl hover:from-teal-700 hover:to-teal-800 transition-all duration-200 shadow-lg hover:shadow-xl">
           View Details
         </button>
       </div>

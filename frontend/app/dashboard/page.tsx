@@ -85,7 +85,7 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <DashboardSidebar />
       
       <div className="ml-64">
@@ -93,34 +93,37 @@ export default function DashboardPage() {
         
         <div className="flex">
           {/* Main Content */}
-          <div className="flex-1 p-6">
-            <div className="max-w-6xl mx-auto">
-              <h1 className="text-3xl font-bold text-slate-900 mb-8">Discover Grants</h1>
+          <div className="flex-1 p-8">
+            <div className="max-w-7xl mx-auto">
+              <div className="mb-8">
+                <h1 className="text-4xl font-bold mb-2 text-white">Discover Grants</h1>
+                <p className="text-slate-400 text-lg">Find the perfect funding opportunities for your research</p>
+              </div>
               
               <FilterTabs activeFilter={activeFilter} onFilterChange={handleFilterChange} />
               
               {loading && (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
-                  <span className="ml-3 text-slate-600">Loading grants...</span>
+                <div className="flex items-center justify-center py-16">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
+                  <span className="ml-4 text-slate-300 text-lg font-medium">Loading grants...</span>
                 </div>
               )}
               
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                  <p className="text-red-800">Error: {error}</p>
+                <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-6 mb-8">
+                  <p className="text-red-300 text-lg font-medium">Error: {error}</p>
                 </div>
               )}
               
               {!loading && !error && filteredGrants.length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-slate-500 text-lg">No grants found</p>
-                  <p className="text-slate-400 mt-2">Try adjusting your search or filters</p>
+                <div className="text-center py-16">
+                  <p className="text-slate-300 text-xl font-medium">No grants found</p>
+                  <p className="text-slate-500 mt-2">Try adjusting your search or filters</p>
                 </div>
               )}
               
               {!loading && !error && filteredGrants.length > 0 && (
-                <div className="grid gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {filteredGrants.map((grant) => (
                     <ModernGrantCard
                       key={grant.id}
