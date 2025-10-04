@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { fetchGrantsAuto } from '@/lib/grants';
+import { calculateBatchMatchScores, getDefaultUserProfile } from '@/lib/matchScore';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import TopNavbar from '@/components/TopNavbar';
 import ModernGrantCard from '@/components/ModernGrantCard';
@@ -40,7 +41,10 @@ export default function DashboardPage() {
         
         if (response.ok && response.body) {
           const grantsData = response.body.items || response.body.grants || [];
-          setGrants(grantsData);
+          // Calculate match scores for all grants
+          const userProfile = getDefaultUserProfile();
+          const grantsWithScores = calculateBatchMatchScores(grantsData, userProfile);
+          setGrants(grantsWithScores);
         } else {
           setError(response.error || 'Failed to fetch grants');
         }

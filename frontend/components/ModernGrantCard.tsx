@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Calendar, DollarSign, ExternalLink, Bookmark } from 'lucide-react';
+import MatchScoreDetails from './MatchScoreDetails';
 
 interface Grant {
   id: string;
@@ -15,6 +16,7 @@ interface Grant {
   url?: string;
   agency?: string;
   matchScore?: number;
+  matchResult?: any; // MatchResult from matchScore.ts
 }
 
 interface ModernGrantCardProps {
@@ -167,6 +169,13 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked = fals
           View Details
         </button>
       </div>
+
+      {/* Match Score Details */}
+      {grant.matchResult && (
+        <div className="mt-4">
+          <MatchScoreDetails matchResult={grant.matchResult} grantTitle={grant.title} />
+        </div>
+      )}
     </div>
   );
 }

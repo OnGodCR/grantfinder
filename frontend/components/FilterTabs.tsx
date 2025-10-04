@@ -5,6 +5,7 @@ import { useState } from 'react';
 interface FilterTabsProps {
   activeFilter: string;
   onFilterChange: (filter: string) => void;
+  filters?: Array<{ id: string; label: string; count: number }>;
 }
 
 const filters = [
@@ -16,10 +17,12 @@ const filters = [
   { id: 'high-match', label: 'High Match', count: 67 },
 ];
 
-export default function FilterTabs({ activeFilter, onFilterChange }: FilterTabsProps) {
+export default function FilterTabs({ activeFilter, onFilterChange, filters: customFilters }: FilterTabsProps) {
+  const displayFilters = customFilters || filters;
+  
   return (
     <div className="flex space-x-2 mb-8">
-      {filters.map((filter) => (
+      {displayFilters.map((filter) => (
         <button
           key={filter.id}
           onClick={() => onFilterChange(filter.id)}
