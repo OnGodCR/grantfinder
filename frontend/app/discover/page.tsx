@@ -37,7 +37,7 @@ export default function DiscoverPage() {
     const fetchGrants = async () => {
       try {
         setLoading(true);
-        const response = await fetchGrantsAuto(searchQuery, user?.id);
+        const response = await fetchGrantsAuto(searchQuery, user?.id || undefined);
         
         if (response.ok && response.body) {
           const grantsData = response.body.items || response.body.grants || [];

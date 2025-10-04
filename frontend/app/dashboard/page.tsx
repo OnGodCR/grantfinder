@@ -36,7 +36,7 @@ export default function DashboardPage() {
       try {
         setLoading(true);
         const token = isSignedIn ? await getToken() : undefined;
-        const response = await fetchGrantsAuto(searchQuery, token);
+        const response = await fetchGrantsAuto(searchQuery, token || undefined);
         
         if (response.ok && response.body) {
           const grantsData = response.body.items || response.body.grants || [];
