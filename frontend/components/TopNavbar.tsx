@@ -16,7 +16,7 @@ export default function TopNavbar({ onSearch }: TopNavbarProps) {
   };
 
   return (
-    <div className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800/50">
+    <div className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800/50">
       <div className="flex items-center justify-between px-6 py-4">
         {/* Search Bar */}
         <div className="flex-1 max-w-2xl">

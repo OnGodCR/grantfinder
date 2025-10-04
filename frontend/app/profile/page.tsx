@@ -5,10 +5,13 @@ import { useAuth } from '@clerk/nextjs';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import TopNavbar from '@/components/TopNavbar';
 import { User, Mail, Calendar, Award, Bookmark, TrendingUp, Settings, Bell, Shield, HelpCircle } from 'lucide-react';
+import UserProfileManager from '@/components/UserProfileManager';
+import { UserProfile, getDefaultUserProfile } from '@/lib/matchScore';
 
 export default function ProfilePage() {
   const { user, isSignedIn, isLoaded } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [researcherProfile, setResearcherProfile] = useState<UserProfile>(getDefaultUserProfile());
   const [profileData, setProfileData] = useState({
     totalGrants: 247,
     bookmarkedGrants: 23,
@@ -30,6 +33,7 @@ export default function ProfilePage() {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: User },
+    { id: 'researcher', label: 'Researcher Profile', icon: TrendingUp },
     { id: 'preferences', label: 'Preferences', icon: Settings },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'security', label: 'Security', icon: Shield },
@@ -63,13 +67,13 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-slate-900">
       <DashboardSidebar />
       
       <div className="ml-64">
         <TopNavbar onSearch={() => {}} />
         
-        <div className="p-8">
+        <div className="p-8 bg-slate-900">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-8">
@@ -168,6 +172,47 @@ export default function ProfilePage() {
                             <span className="text-slate-300">Found 12 new matching grants</span>
                           </div>
                           <span className="text-slate-400 text-sm">3 days ago</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'researcher' && (
+                  <div className="space-y-8">
+                    <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/30">
+                      <h3 className="text-xl font-bold text-white mb-6">Researcher Profile for Match Scoring</h3>
+                      <p className="text-slate-400 mb-6">
+                        This profile is used to calculate match scores for grants. Update your research interests, 
+                        funding preferences, and other details to get more accurate grant recommendations.
+                      </p>
+                      <UserProfileManager 
+                        onProfileChange={setResearcherProfile}
+                        initialProfile={researcherProfile}
+                      />
+                    </div>
+
+                    {/* Profile Summary */}
+                    <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/30">
+                      <h4 className="text-lg font-bold text-white mb-4">Current Profile Summary</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h5 className="text-slate-300 font-medium mb-2">Research Interests</h5>
+                          <p className="text-slate-400 text-sm">{researcherProfile.researchInterests.length} interests defined</p>
+                        </div>
+                        <div>
+                          <h5 className="text-slate-300 font-medium mb-2">Funding Range</h5>
+                          <p className="text-slate-400 text-sm">
+                            ${researcherProfile.fundingRange.min.toLocaleString()} - ${researcherProfile.fundingRange.max.toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <h5 className="text-slate-300 font-medium mb-2">Preferred Agencies</h5>
+                          <p className="text-slate-400 text-sm">{researcherProfile.preferredAgencies.length} agencies selected</p>
+                        </div>
+                        <div>
+                          <h5 className="text-slate-300 font-medium mb-2">Experience Level</h5>
+                          <p className="text-slate-400 text-sm capitalize">{researcherProfile.experienceLevel}</p>
                         </div>
                       </div>
                     </div>

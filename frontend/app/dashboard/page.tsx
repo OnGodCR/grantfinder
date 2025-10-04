@@ -89,7 +89,7 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-slate-900">
       <DashboardSidebar />
       
       <div className="ml-64">
@@ -97,7 +97,7 @@ export default function DashboardPage() {
         
         <div className="flex">
           {/* Main Content */}
-          <div className="flex-1 p-8">
+          <div className="flex-1 p-8 bg-slate-900">
             <div className="max-w-7xl mx-auto">
               <div className="mb-8">
                 <h1 className="text-4xl font-bold mb-2 text-white">Discover Grants</h1>

@@ -156,13 +156,13 @@ export default function NotificationsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-slate-900">
       <DashboardSidebar />
       
       <div className="ml-64">
         <TopNavbar onSearch={() => {}} />
         
-        <div className="p-8">
+        <div className="p-8 bg-slate-900">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">

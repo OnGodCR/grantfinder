@@ -87,14 +87,14 @@ export default function DiscoverPage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-900">
       <DashboardSidebar />
       
       <div className="ml-64">
@@ -102,28 +102,28 @@ export default function DiscoverPage() {
         
         <div className="flex">
           {/* Main Content */}
-          <div className="flex-1 p-6">
+          <div className="flex-1 p-6 bg-slate-900">
             <div className="max-w-6xl mx-auto">
-              <h1 className="text-3xl font-bold text-slate-900 mb-8">Discover Grants</h1>
+              <h1 className="text-3xl font-bold text-white mb-8">Discover Grants</h1>
               
               <FilterTabs activeFilter={activeFilter} onFilterChange={handleFilterChange} />
               
               {loading && (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
-                  <span className="ml-3 text-slate-600">Loading grants...</span>
+                  <span className="ml-3 text-slate-300">Loading grants...</span>
                 </div>
               )}
               
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                  <p className="text-red-800">Error: {error}</p>
+                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 mb-6">
+                  <p className="text-red-300">Error: {error}</p>
                 </div>
               )}
               
               {!loading && !error && filteredGrants.length === 0 && (
                 <div className="text-center py-12">
-                  <p className="text-slate-500 text-lg">No grants found</p>
+                  <p className="text-slate-300 text-lg">No grants found</p>
                   <p className="text-slate-400 mt-2">Try adjusting your search or filters</p>
                 </div>
               )}

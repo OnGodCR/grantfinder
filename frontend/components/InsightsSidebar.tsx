@@ -41,7 +41,7 @@ export default function InsightsSidebar({
   const keywords = trendingKeywords.length > 0 ? trendingKeywords : defaultKeywords;
 
   return (
-    <div className="w-80 bg-slate-900/95 backdrop-blur-sm border-l border-slate-800/50 p-6 space-y-8">
+    <div className="w-80 bg-slate-900 border-l border-slate-800/50 p-6 space-y-8">
       {/* Recommended for You */}
       <div>
         <div className="flex items-center mb-6">
