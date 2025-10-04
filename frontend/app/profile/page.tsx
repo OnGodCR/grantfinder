@@ -52,7 +52,7 @@ export default function ProfilePage() {
       ...prev,
       notifications: {
         ...prev.notifications,
-        [key]: !prev.notifications[key]
+        [key]: !prev.notifications[key as keyof typeof prev.notifications]
       }
     }));
   };
