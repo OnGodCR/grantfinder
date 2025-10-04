@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, DollarSign, ExternalLink, Bookmark } from 'lucide-react';
+import { Calendar, DollarSign, ExternalLink, Bookmark, Building } from 'lucide-react';
 import MatchScoreDetails from './MatchScoreDetails';
 
 interface Grant {
