@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import axios from 'axios'
 import { useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 
@@ -9,19 +8,51 @@ const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000/api'
 export default function GrantDetail() {
   const params = useParams()
   const [g, setG] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { getToken } = useAuth()
 
   useEffect(() => {
     (async () => {
-      const token = await getToken()
-      const res = await axios.get(`${API}/grants/${params.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setG(res.data)
+      try {
+        setLoading(true)
+        const token = await getToken()
+        
+        // Since we don't have a GET endpoint for individual grants,
+        // we'll fetch all grants and find the one with matching ID
+        const response = await fetch(`${API}/grants`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ q: '', limit: 1000 }), // Get many grants to find the one we need
+          credentials: 'include'
+        })
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+        
+        const data = await response.json()
+        const grant = data.items?.find((item: any) => item.id === params.id)
+        
+        if (grant) {
+          setG(grant)
+        } else {
+          setError('Grant not found')
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to load grant')
+      } finally {
+        setLoading(false)
+      }
     })()
-  }, [params.id])
+  }, [params.id, getToken])
 
-  if (!g) return <div className="max-w-4xl mx-auto mt-10">Loading…</div>
+  if (loading) return <div className="max-w-4xl mx-auto mt-10">Loading…</div>
+  if (error) return <div className="max-w-4xl mx-auto mt-10 text-red-600">Error: {error}</div>
+  if (!g) return <div className="max-w-4xl mx-auto mt-10">Grant not found</div>
 
   return (
     <main className="max-w-4xl mx-auto mt-10 card">

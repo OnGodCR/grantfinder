@@ -1,14 +1,8 @@
 // next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: '/api/grants',
-        destination: `${process.env.BACKEND_URL}/api/grants`,
-      },
-    ];
-  },
+  // Remove rewrites to avoid conflicts with direct API calls
+  // The frontend will call the backend directly using NEXT_PUBLIC_BACKEND_URL
 };
 
 module.exports = nextConfig;
