@@ -28,7 +28,7 @@ export default function BookmarksPage() {
         setLoading(true);
         // For now, we'll fetch all grants and filter client-side
         // In a real app, you'd have a dedicated bookmarks API endpoint
-        const response = await fetchGrantsAuto(searchQuery, isSignedIn ? await getToken() : undefined);
+        const response = await fetchGrantsAuto(searchQuery, isSignedIn ? (await getToken()) || undefined : undefined);
         
         if (response.ok && response.body) {
           const grantsData = response.body.items || response.body.grants || [];

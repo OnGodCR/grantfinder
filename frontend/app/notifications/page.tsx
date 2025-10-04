@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import TopNavbar from '@/components/TopNavbar';
-import { Bell, Check, X, AlertCircle, Award, Bookmark, TrendingUp, Calendar, Filter, MarkAsRead } from 'lucide-react';
+import { Bell, Check, X, AlertCircle, Award, Bookmark, TrendingUp, Calendar, Filter, CheckCheck } from 'lucide-react';
 
 export default function NotificationsPage() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -178,7 +178,7 @@ export default function NotificationsPage() {
                   onClick={markAllAsRead}
                   className="flex items-center px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
                 >
-                  <MarkAsRead className="w-4 h-4 mr-2" />
+                  <CheckCheck className="w-4 h-4 mr-2" />
                   Mark All Read
                 </button>
               )}
