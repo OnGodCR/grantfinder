@@ -1,6 +1,5 @@
 // frontend/lib/api.ts
-const API_BASE =
-  (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE) || "https://grantfinder-production.up.railway.app/api";
+const API_BASE = "https://grantfinder-production.up.railway.app/api";
 
 export async function fetchGrants(payload: any) {
   const res = await fetch(`${API_BASE}/grants`, {

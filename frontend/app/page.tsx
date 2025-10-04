@@ -1,244 +1,256 @@
-import GrantCard from '@/components/GrantCard'
-
-/* ---------------- existing content stays exactly as you had it ---------------- */
+import Link from 'next/link';
+import { ArrowRight, Search, Bookmark, TrendingUp, Award, Clock, Users } from 'lucide-react';
 
 const grants = [
-  { title: 'Climate Change Research Initiative',
-    summary: 'NSF program supporting climate-focused research projects.',
-    score: 82 },
-  { title: 'Genomics and Health Disparities',
-    summary: 'Funding to study genomic factors in public health outcomes.',
-    score: 87 },
-  { title: 'Renewable Energy Technology Development',
-    summary: 'Support for novel energy tech with environmental impact.',
-    score: 50 },
-  { title: 'Digital Education Innovation',
-    summary: 'Grants accelerating modern learning technologies.',
-    score: 78 },
+  { 
+    title: 'Climate Change Research Initiative',
+    summary: 'NSF program supporting climate-focused research projects with up to $2M in funding.',
+    score: 92,
+    agency: 'National Science Foundation',
+    deadline: '2024-03-15',
+    funding: '$500K - $2M'
+  },
+  { 
+    title: 'Genomics and Health Disparities',
+    summary: 'NIH funding to study genomic factors in public health outcomes and precision medicine.',
+    score: 87,
+    agency: 'National Institutes of Health',
+    deadline: '2024-02-28',
+    funding: '$1M - $3M'
+  },
+  { 
+    title: 'Renewable Energy Technology Development',
+    summary: 'DOE support for novel energy technologies with environmental impact and scalability.',
+    score: 75,
+    agency: 'Department of Energy',
+    deadline: '2024-04-10',
+    funding: '$750K - $1.5M'
+  },
+  { 
+    title: 'Digital Education Innovation',
+    summary: 'NSF grants accelerating modern learning technologies and educational research.',
+    score: 80,
+    agency: 'National Science Foundation',
+    deadline: '2024-03-30',
+    funding: '$300K - $800K'
+  },
 ]
 
 export default function Home() {
   return (
-    <>
-      {/* Hero + sample grant cards (unchanged) */}
-      <section className="mx-auto max-w-6xl px-4 pt-16 pb-24">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          {/* Left: hero */}
-          <div>
-            <h1 className="text-4xl md:text-6xl font-bold leading-tight">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Navigation */}
+      <nav className="relative z-10 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-2xl font-bold text-white">Grantalytic</span>
+          </div>
+          <div className="hidden md:flex items-center space-x-8">
+            <a href="/features" className="text-slate-300 hover:text-white transition-colors">Features</a>
+            <a href="/about" className="text-slate-300 hover:text-white transition-colors">About Us</a>
+            <a href="/contact" className="text-slate-300 hover:text-white transition-colors">Contact Us</a>
+            <Link href="/discover" className="bg-teal-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-teal-600 transition-colors">
+              Log in
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative px-6 py-20">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left: Hero Content */}
+            <div className="space-y-8">
+              <h1 className="text-5xl lg:text-6xl font-bold text-white leading-tight">
               AI-Powered Grant Discovery for Universities
             </h1>
-            <p className="mt-6 text-lg text-body">
-              Save your faculty hours of searching. Find, match, and apply for research grants in minutes.
-            </p>
-            <div className="mt-8 flex gap-4">
-              <a className="rounded-3xl bg-mint text-navy px-6 py-3 font-semibold hover:opacity-90" href="/contact">
+              <p className="text-xl text-slate-300 leading-relaxed">
+                Save your faculty hours of searching. Find, match, and apply for research grants in minutes with our intelligent platform.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link 
+                  href="/discover"
+                  className="inline-flex items-center justify-center px-8 py-4 bg-teal-500 text-white font-semibold rounded-xl hover:bg-teal-600 transition-colors"
+                >
+                  Start Discovering
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+                <Link 
+                  href="/contact"
+                  className="inline-flex items-center justify-center px-8 py-4 border-2 border-slate-600 text-white font-semibold rounded-xl hover:border-teal-500 hover:text-teal-400 transition-colors"
+                >
                 Book a Demo
-              </a>
-              <a className="rounded-3xl border border-mint text-text px-6 py-3 font-semibold hover:bg-white/5" href="/features">
-                See How It Works
-              </a>
+                </Link>
             </div>
-            {/* UPDATED BRAND NAME HERE */}
-            <p className="mt-10 text-sm text-body/80">
-              Grantlytic AI aggregates funding opportunities from trusted sources (NSF, NIH, Horizon, and more).
+              <p className="text-sm text-slate-400">
+                Grantalytic AI aggregates funding opportunities from trusted sources including NSF, NIH, Horizon Europe, and more.
             </p>
           </div>
 
-          {/* Right: grant cards panel */}
-          <div className="rounded-3xl bg-white/5 p-4 md:p-6 ring-1 ring-white/10">
-            <div className="rounded-3xl bg-off p-4 md:p-6 shadow-soft">
+            {/* Right: Grant Cards Preview */}
+            <div className="relative">
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
               <div className="space-y-4">
-                {grants.map(g => <GrantCard key={g.title} {...g} />)}
+                  {grants.map((grant, index) => (
+                    <div key={grant.title} className="bg-white rounded-xl p-4 shadow-lg">
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-slate-900 line-clamp-2 flex-1">
+                          {grant.title}
+                        </h3>
+                        <div className="ml-3 flex-shrink-0">
+                          <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                            <span className="text-xs font-bold text-teal-600">{grant.score}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 line-clamp-2 mb-2">
+                        {grant.summary}
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span>{grant.agency}</span>
+                        <span>{grant.funding}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ---------------- new sections start here ---------------- */}
-
-      {/* Quick CTA strip under hero */}
-      <section className="mx-auto max-w-6xl px-4 pb-4">
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-center ring-1 ring-white/10">
-          <p className="text-body">
-            👉 Stop missing opportunities. Start winning more grants.
-          </p>
-          <div className="mt-3">
-            <a
-              href="/contact"
-              className="inline-flex items-center justify-center rounded-3xl bg-mint px-6 py-3 font-semibold text-navy hover:opacity-90"
-            >
-              Request a Pilot
-            </a>
+      {/* Features Section */}
+      <section className="px-6 py-20 bg-slate-800/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-white mb-4">Why Choose Grantalytic?</h2>
+            <p className="text-xl text-slate-300">Powerful features designed for research institutions</p>
           </div>
-        </div>
-      </section>
-
-      {/* Security & Trust */}
-      <section className="mx-auto max-w-6xl px-4 pt-16 pb-12">
-        <SectionHeader
-          eyebrow="Security & Trust"
-          title="Secure by design. Built for higher education."
-          description="We know universities take data security seriously. We do too. Grantalytic is designed with transparency and trust at its core."
-        />
-
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <TrustItem>
-            🔒 Hosted on Vercel (frontend) and Railway (backend and database) using managed, enterprise-grade infrastructure.
-          </TrustItem>
-          <TrustItem>
-            📡 Grants only from public, verifiable sources like NSF, NIH, Horizon Europe, and foundation databases.
-          </TrustItem>
-          <TrustItem>
-            👤 Institutional ownership of all data. Full export and deletion available on request.
-          </TrustItem>
-          <TrustItem>
-            🔑 Role-based authentication and encrypted connections over TLS/HTTPS.
-          </TrustItem>
-          <TrustItem>
-            🚫 No sensitive student records or unpublished research required.
-          </TrustItem>
-          <TrustItem>
-            ✅ Peace of mind for IT. Simple for researchers.
-          </TrustItem>
-        </div>
-      </section>
-
-      {/* Core Features */}
-      <section className="mx-auto max-w-6xl px-4 pt-8 pb-16">
-        <SectionHeader
-          eyebrow="Core Features"
-          title="Discover more. Work smarter. Win faster."
-        />
-
-        <div className="mt-8 grid gap-6 md:grid-cols-3">
-          <FeatureCard title="Grant Discovery Engine">
-            Aggregated NSF, NIH, Horizon Europe, and foundation data in one searchable place.
-          </FeatureCard>
-          <FeatureCard title="AI Summaries and Match Scores">
-            Instant highlights for eligibility and relevance so teams can decide quickly.
-          </FeatureCard>
-          <FeatureCard title="Researcher Profiles">
-            Tailored suggestions that fit each faculty member and lab focus.
-          </FeatureCard>
-          <FeatureCard title="Collaboration Tools">
-            Shared collections and discussion threads that keep context in one view.
-          </FeatureCard>
-          <FeatureCard title="Smart Alerts">
-            Email and in-app reminders for deadlines with the right level of signal.
-          </FeatureCard>
-          <FeatureCard title="Admin Dashboard">
-            Oversight, analytics, and subscription management for your institution.
-          </FeatureCard>
-        </div>
-
-        <div className="mt-8 text-center">
-          <a
-            href="/features"
-            className="inline-flex items-center justify-center rounded-3xl border border-mint px-6 py-3 font-semibold text-text hover:bg-white/5"
-          >
-            Explore all features
-          </a>
-        </div>
-      </section>
-
-      {/* The Why */}
-      <section className="mx-auto max-w-6xl px-4 pt-8 pb-28 md:pb-32">
-        <SectionHeader eyebrow="The Why" title="Why we built Grantalytic" />
-
-        <div className="grid gap-6 md:grid-cols-[280px_1fr] items-start">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 ring-1 ring-white/10">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-mint/20 text-mint text-2xl font-bold">
-              AK
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="text-center p-6">
+              <div className="w-16 h-16 bg-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-3">Intelligent Search</h3>
+              <p className="text-slate-300">AI-powered matching finds the most relevant grants for your research focus and institution profile.</p>
             </div>
-            <div className="text-text font-semibold">Angad Kochar</div>
-            <div className="text-body text-sm">Founder</div>
+            
+            <div className="text-center p-6">
+              <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-3">Real-time Updates</h3>
+              <p className="text-slate-300">Stay ahead with live updates from 500+ funding sources including NSF, NIH, and international agencies.</p>
+            </div>
+            
+            <div className="text-center p-6">
+              <div className="w-16 h-16 bg-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Award className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-3">Success Tracking</h3>
+              <p className="text-slate-300">Monitor application progress, track success rates, and optimize your grant strategy over time.</p>
+            </div>
           </div>
+        </div>
+      </section>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 ring-1 ring-white/10">
-            <p className="text-body">
-              While working as a Youth Researcher at the University of Washington, I collaborated with PhD students and professors on active projects. One challenge kept coming up in conversation.
-            </p>
-            <blockquote className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 italic text-body">
-              “Finding the right grants is slow, fragmented, and overwhelming.”
-            </blockquote>
-            <p className="mt-4 text-body">
-              That insight inspired me to build Grantalytic. The goal is a platform designed with researchers, for researchers, so grant discovery is faster, clearer, and easier to coordinate across a university.
-            </p>
+      {/* Stats Section */}
+      <section className="px-6 py-20">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div className="text-4xl font-bold text-teal-400 mb-2">500+</div>
+              <div className="text-slate-300">Funding Sources</div>
+        </div>
+            <div>
+              <div className="text-4xl font-bold text-teal-400 mb-2">10K+</div>
+              <div className="text-slate-300">Active Grants</div>
+        </div>
+            <div>
+              <div className="text-4xl font-bold text-teal-400 mb-2">95%</div>
+              <div className="text-slate-300">Match Accuracy</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold text-teal-400 mb-2">24/7</div>
+              <div className="text-slate-300">Monitoring</div>
+          </div>
           </div>
         </div>
       </section>
 
-      {/* subtle divider between sections */}
-      <div className="mx-auto max-w-6xl px-4">
-        <div className="my-10 md:my-14 h-px w-full rounded-full bg-white/10"></div>
-      </div>
-
-      {/* Final CTA (now with added top margin) */}
-      <section className="mx-auto max-w-6xl px-4 mt-12 md:mt-16 pb-24">
-        <div className="flex flex-col items-center justify-between gap-4 rounded-3xl border border-mint/40 bg-white/5 p-6 md:flex-row">
-          <div>
-            <h3 className="text-xl font-semibold text-text">Ready to unlock more funding for your institution?</h3>
-            <p className="mt-1 text-body">Choose what fits your team. We keep it simple.</p>
-          </div>
-          <div className="flex gap-3">
-            <a
-              href="/contact"
-              className="rounded-3xl bg-mint px-6 py-3 font-semibold text-navy hover:opacity-90"
+      {/* CTA Section */}
+      <section className="px-6 py-20 bg-gradient-to-r from-teal-500 to-blue-600">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl font-bold text-white mb-4">Ready to Transform Your Grant Discovery?</h2>
+          <p className="text-xl text-teal-100 mb-8">Join hundreds of universities already using Grantalytic to find and win more grants.</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link 
+              href="/discover"
+              className="inline-flex items-center justify-center px-8 py-4 bg-white text-teal-600 font-semibold rounded-xl hover:bg-slate-100 transition-colors"
             >
-              Request a Pilot
-            </a>
-            <a
+              Start Free Trial
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Link>
+            <Link 
               href="/contact"
-              className="rounded-3xl border border-mint px-6 py-3 font-semibold text-text hover:bg-white/5"
+              className="inline-flex items-center justify-center px-8 py-4 border-2 border-white text-white font-semibold rounded-xl hover:bg-white/10 transition-colors"
             >
-              Book a Demo
-            </a>
+              Schedule Demo
+            </Link>
           </div>
         </div>
       </section>
-    </>
-  )
-}
 
-/* ---------------- tiny UI helpers to keep things clean ---------------- */
-
-function SectionHeader({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow?: string
-  title: string
-  description?: string
-}) {
-  return (
-    <div className="text-center">
-      {eyebrow ? (
-        <span className="inline-flex items-center gap-2 rounded-full border border-mint/40 bg-white/5 px-4 py-1 text-sm text-body">
-          {eyebrow}
-        </span>
-      ) : null}
-      <h2 className="mt-4 text-3xl md:text-4xl font-bold leading-tight">{title}</h2>
-      {description ? <p className="mx-auto mt-3 max-w-3xl text-body">{description}</p> : null}
+      {/* Footer */}
+      <footer className="px-6 py-12 bg-slate-900 border-t border-slate-800">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold text-white">Grantalytic</span>
+              </div>
+              <p className="text-slate-400 text-sm">
+                AI-powered grant discovery platform for universities and research institutions.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-4">Product</h3>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li><a href="/features" className="hover:text-white transition-colors">Features</a></li>
+                <li><a href="/pricing" className="hover:text-white transition-colors">Pricing</a></li>
+                <li><a href="/integrations" className="hover:text-white transition-colors">Integrations</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-4">Company</h3>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li><a href="/about" className="hover:text-white transition-colors">About Us</a></li>
+                <li><a href="/contact" className="hover:text-white transition-colors">Contact</a></li>
+                <li><a href="/careers" className="hover:text-white transition-colors">Careers</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-4">Support</h3>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li><a href="/help" className="hover:text-white transition-colors">Help Center</a></li>
+                <li><a href="/docs" className="hover:text-white transition-colors">Documentation</a></li>
+                <li><a href="/status" className="hover:text-white transition-colors">Status</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-slate-800 mt-8 pt-8 text-center text-sm text-slate-400">
+            <p>&copy; 2024 Grantalytic. All rights reserved.</p>
     </div>
-  )
-}
-
-function FeatureCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-6 ring-1 ring-white/10">
-      <div className="text-mint font-semibold">{title}</div>
-      <p className="mt-2 text-body">{children}</p>
     </div>
-  )
-}
-
-function TrustItem({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-      <p className="text-body">{children}</p>
+      </footer>
     </div>
-  )
+  );
 }

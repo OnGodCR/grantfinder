@@ -1,76 +1,154 @@
-// frontend/app/discover/page.tsx
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
-import { fetchGrantsAuto } from "@/lib/grants"; // use the correct search API
-import ScoreBadge from "@/components/ScoreBadge";
+import { useEffect, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
+import { fetchGrantsAuto } from '@/lib/grants';
+import DashboardSidebar from '@/components/DashboardSidebar';
+import TopNavbar from '@/components/TopNavbar';
+import ModernGrantCard from '@/components/ModernGrantCard';
+import InsightsSidebar from '@/components/InsightsSidebar';
+import FilterTabs from '@/components/FilterTabs';
+
+interface Grant {
+  id: string;
+  title: string;
+  description: string;
+  summary?: string;
+  deadline?: string;
+  fundingMin?: number;
+  fundingMax?: number;
+  currency?: string;
+  url?: string;
+  agency?: string;
+  matchScore?: number;
+}
 
 export default function DiscoverPage() {
   const { user, isLoaded } = useUser();
-  const [grants, setGrants] = useState<any[]>([]);
+  const [grants, setGrants] = useState<Grant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!isLoaded) return;
-    (async () => {
+    
+    const fetchGrants = async () => {
       try {
-        const res = await fetchGrantsAuto("", user?.id);
-        if (res.ok && res.body) {
-          setGrants(res.body.items || res.body.grants || []);
+        setLoading(true);
+        const response = await fetchGrantsAuto(searchQuery, user?.id);
+        
+        if (response.ok && response.body) {
+          const grantsData = response.body.items || response.body.grants || [];
+          setGrants(grantsData);
         } else {
-          console.error("fetchGrants failed:", res.error || "Unknown error");
+          setError(response.error || 'Failed to fetch grants');
         }
-      } catch (err) {
-        console.error("fetchGrants failed:", err);
+      } catch (err: any) {
+        setError(err.message || 'An error occurred');
       } finally {
         setLoading(false);
       }
-    })();
-  }, [isLoaded, user]);
+    };
 
-  if (!isLoaded || loading) return <div className="p-6">Loading…</div>;
+    fetchGrants();
+  }, [isLoaded, user, searchQuery]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleFilterChange = (filter: string) => {
+    setActiveFilter(filter);
+  };
+
+  const handleBookmark = (grantId: string) => {
+    console.log('Bookmarking grant:', grantId);
+  };
+
+  const filteredGrants = grants.filter(grant => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'nsf') return grant.agency?.toLowerCase().includes('nsf');
+    if (activeFilter === 'nih') return grant.agency?.toLowerCase().includes('nih');
+    if (activeFilter === 'foundations') return !grant.agency?.toLowerCase().includes('nsf') && !grant.agency?.toLowerCase().includes('nih');
+    if (activeFilter === 'deadline-soon') {
+      if (!grant.deadline) return false;
+      const daysUntilDeadline = Math.ceil((new Date(grant.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntilDeadline <= 14;
+    }
+    if (activeFilter === 'high-match') return (grant.matchScore || 0) >= 80;
+    return true;
+  });
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
+      </div>
+    );
+  }
 
   return (
-    <main className="max-w-5xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Discover Grants</h1>
-
-      <div className="space-y-4">
-        {grants.map((g) => (
-          <article
-            key={g.id}
-            className="relative rounded-2xl bg-white/5 border border-white/10 p-6"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <h3 className="text-lg font-semibold">{g.title}</h3>
-              <ScoreBadge score={g.matchScore} />
+    <div className="min-h-screen bg-slate-50">
+      <DashboardSidebar />
+      
+      <div className="ml-64">
+        <TopNavbar onSearch={handleSearch} />
+        
+        <div className="flex">
+          {/* Main Content */}
+          <div className="flex-1 p-6">
+            <div className="max-w-6xl mx-auto">
+              <h1 className="text-3xl font-bold text-slate-900 mb-8">Discover Grants</h1>
+              
+              <FilterTabs activeFilter={activeFilter} onFilterChange={handleFilterChange} />
+              
+              {loading && (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
+                  <span className="ml-3 text-slate-600">Loading grants...</span>
+                </div>
+              )}
+              
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                  <p className="text-red-800">Error: {error}</p>
+                </div>
+              )}
+              
+              {!loading && !error && filteredGrants.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-slate-500 text-lg">No grants found</p>
+                  <p className="text-slate-400 mt-2">Try adjusting your search or filters</p>
+                </div>
+              )}
+              
+              {!loading && !error && filteredGrants.length > 0 && (
+                <div className="grid gap-6">
+                  {filteredGrants.map((grant) => (
+                    <ModernGrantCard
+                      key={grant.id}
+                      grant={grant}
+                      onBookmark={handleBookmark}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-
-            <p className="mt-2 text-white/70 line-clamp-2">{g.summary}</p>
-
-            {g.deadline && (
-              <div className="mt-3">
-                <span className="inline-block text-sm px-2 py-1 rounded-md bg-green-600/20 text-green-300">
-                  {Math.ceil(
-                    (new Date(g.deadline).getTime() - Date.now()) /
-                      (1000 * 60 * 60 * 24)
-                  )}{" "}
-                  days left
-                </span>
-              </div>
-            )}
-
-            <a
-              className="mt-3 block text-blue-400 underline text-sm"
-              href={g.url || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Click to view grant →
-            </a>
-          </article>
-        ))}
+          </div>
+          
+          {/* Insights Sidebar */}
+          <InsightsSidebar 
+            recommendedGrants={grants.slice(0, 4).map(g => ({ id: g.id, title: g.title, score: g.matchScore || 0 }))}
+            upcomingDeadlines={grants.filter(g => {
+              if (!g.deadline) return false;
+              const daysUntilDeadline = Math.ceil((new Date(g.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+              return daysUntilDeadline <= 14;
+            }).length}
+          />
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
