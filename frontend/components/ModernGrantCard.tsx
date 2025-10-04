@@ -63,10 +63,10 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked = fals
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-slate-900 mb-2 line-clamp-2">
+          <h3 className="text-lg font-semibold text-slate-900 mb-2 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
             {grant.title}
           </h3>
-          <p className="text-sm text-slate-600 line-clamp-3">
+          <p className="text-sm text-slate-600 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'}}>
             {grant.summary || grant.description}
           </p>
         </div>

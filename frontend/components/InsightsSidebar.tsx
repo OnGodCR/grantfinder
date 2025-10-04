@@ -55,7 +55,7 @@ export default function InsightsSidebar({
               className="p-3 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-white line-clamp-2">
+                <span className="text-sm font-medium text-white overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
                   {grant.title}
                 </span>
                 <span className="text-xs font-semibold text-teal-400 ml-2 flex-shrink-0">

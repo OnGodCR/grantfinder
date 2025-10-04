@@ -98,7 +98,7 @@ export default function Home() {
                   {grants.map((grant, index) => (
                     <div key={grant.title} className="bg-white rounded-xl p-4 shadow-lg">
                       <div className="flex items-start justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-slate-900 line-clamp-2 flex-1">
+                        <h3 className="text-sm font-semibold text-slate-900 flex-1 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
                           {grant.title}
                         </h3>
                         <div className="ml-3 flex-shrink-0">
@@ -107,7 +107,7 @@ export default function Home() {
                           </div>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-600 line-clamp-2 mb-2">
+                      <p className="text-xs text-slate-600 mb-2 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
                         {grant.summary}
                       </p>
                       <div className="flex items-center justify-between text-xs text-slate-500">
