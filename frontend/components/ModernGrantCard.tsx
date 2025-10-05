@@ -203,6 +203,7 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
           <MatchScoreDetails matchResult={grant.matchResult} grantTitle={grant.title} />
         </div>
       )}
+      </div>
     </div>
   );
 }
