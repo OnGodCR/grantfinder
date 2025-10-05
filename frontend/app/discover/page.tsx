@@ -42,9 +42,15 @@ export default function DiscoverPage() {
         
         if (response.ok && response.body) {
           const grantsData = response.body.items || response.body.grants || [];
+          console.log('Raw grants data:', grantsData.slice(0, 2)); // Debug: log first 2 grants
+          
           // Calculate match scores for all grants
           const userProfile = getDefaultUserProfile();
+          console.log('User profile:', userProfile); // Debug: log user profile
+          
           const grantsWithScores = calculateBatchMatchScores(grantsData, userProfile);
+          console.log('Grants with scores:', grantsWithScores.slice(0, 2)); // Debug: log first 2 with scores
+          
           setGrants(grantsWithScores);
         } else {
           setError(response.error || 'Failed to fetch grants');
@@ -104,7 +110,7 @@ export default function DiscoverPage() {
           {/* Main Content */}
           <div className="flex-1 p-2 bg-slate-900">
             <div className="w-full">
-              <h1 className="text-2xl font-bold text-white mb-1">Discover Grants</h1>
+              <h1 className="text-2xl font-bold text-white mb-0">Discover Grants</h1>
               
               <FilterTabs activeFilter={activeFilter} onFilterChange={handleFilterChange} />
               
@@ -129,7 +135,7 @@ export default function DiscoverPage() {
               )}
               
               {!loading && !error && filteredGrants.length > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mt-0">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
                   {filteredGrants.map((grant) => (
                     <ModernGrantCard
                       key={grant.id}
@@ -146,6 +152,17 @@ export default function DiscoverPage() {
           <InsightsSidebar
             recommendedGrants={grants.slice(0, 4).map(g => ({ id: g.id, title: g.title, score: g.matchScore || 0 }))}
             upcomingDeadlines={grants.filter(g => {
+              if (!g.deadline) return false;
+              const daysUntilDeadline = Math.ceil((new Date(g.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+              return daysUntilDeadline <= 14;
+            }).length}
+            totalGrants={grants.length}
+            grantsThisWeek={grants.filter(g => {
+              if (!g.deadline) return false;
+              const daysUntilDeadline = Math.ceil((new Date(g.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+              return daysUntilDeadline <= 7;
+            }).length}
+            grantsDueSoon={grants.filter(g => {
               if (!g.deadline) return false;
               const daysUntilDeadline = Math.ceil((new Date(g.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
               return daysUntilDeadline <= 14;

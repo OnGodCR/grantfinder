@@ -59,6 +59,25 @@ export interface MatchResult {
  * Calculate match score between a grant and user profile
  */
 export function calculateMatchScore(grant: Grant, profile: UserProfile): MatchResult {
+  // Add fallback for basic scoring if grant data is incomplete
+  const hasBasicData = grant.title && grant.description;
+  if (!hasBasicData) {
+    return {
+      score: 25, // Default low score for incomplete data
+      factors: {
+        keywordMatch: 0.2,
+        fundingMatch: 0.3,
+        deadlineMatch: 0.2,
+        agencyMatch: 0.2,
+        typeMatch: 0.2,
+        locationMatch: 0.2,
+        experienceMatch: 0.2,
+      },
+      explanation: ['Limited data available for accurate matching'],
+      recommendations: ['Review grant details for better assessment'],
+    };
+  }
+
   const factors: MatchFactors = {
     keywordMatch: 0,
     fundingMatch: 0,
@@ -183,9 +202,6 @@ export function calculateMatchScore(grant: Grant, profile: UserProfile): MatchRe
     factors.locationMatch * weights.locationMatch +
     factors.experienceMatch * weights.experienceMatch
   );
-  
-  console.log('Match factors:', factors);
-  console.log('Calculated score:', score);
 
   return {
     score: Math.min(100, Math.max(0, score)),
@@ -211,9 +227,15 @@ function calculateKeywordMatch(grant: Grant, profile: UserProfile): number {
     
     for (const word of words) {
       if (word.length > 2) { // Ignore short words
+        // More flexible matching - check for partial matches too
+        if (grantText.includes(word)) {
+          interestScore += 0.3; // Base score for partial match
+        }
+        
+        // Check for exact word matches
         const regex = new RegExp(`\\b${word}\\b`, 'gi');
         const matches = (grantText.match(regex) || []).length;
-        interestScore += Math.min(matches * 0.2, 1); // Cap at 1 per word
+        interestScore += Math.min(matches * 0.2, 0.7); // Cap at 0.7 per word
       }
     }
     
@@ -221,14 +243,26 @@ function calculateKeywordMatch(grant: Grant, profile: UserProfile): number {
     totalWeight += 1;
   }
 
-  return totalWeight > 0 ? matchCount / totalWeight : 0;
+  // If no matches found, give a small score based on common research terms
+  if (matchCount === 0) {
+    const commonTerms = ['research', 'study', 'investigation', 'analysis', 'development', 'innovation', 'technology', 'science'];
+    let commonMatches = 0;
+    for (const term of commonTerms) {
+      if (grantText.includes(term)) {
+        commonMatches += 0.1;
+      }
+    }
+    return Math.min(commonMatches, 0.3); // Max 30% for common terms
+  }
+
+  return totalWeight > 0 ? matchCount / totalWeight : 0.1; // Minimum 10% score
 }
 
 /**
  * Calculate funding amount matching score
  */
 function calculateFundingMatch(grant: Grant, profile: UserProfile): number {
-  if (!grant.fundingMin && !grant.fundingMax) return 0.5; // Unknown funding
+  if (!grant.fundingMin && !grant.fundingMax) return 0.6; // Unknown funding - give decent score
 
   const grantMin = grant.fundingMin || 0;
   const grantMax = grant.fundingMax || grantMin;
@@ -237,10 +271,10 @@ function calculateFundingMatch(grant: Grant, profile: UserProfile): number {
 
   // Check if grant funding overlaps with user preferences
   if (grantMax < userMin) {
-    return 0; // Grant max is below user minimum
+    return 0.2; // Grant max is below user minimum - still give some score
   }
   if (grantMin > userMax) {
-    return 0; // Grant min is above user maximum
+    return 0.2; // Grant min is above user maximum - still give some score
   }
 
   // Calculate overlap percentage
@@ -249,7 +283,12 @@ function calculateFundingMatch(grant: Grant, profile: UserProfile): number {
   const overlap = Math.max(0, overlapMax - overlapMin);
   const totalRange = Math.max(grantMax - grantMin, userMax - userMin);
 
-  return totalRange > 0 ? overlap / totalRange : 1;
+  if (totalRange > 0) {
+    const overlapScore = overlap / totalRange;
+    return Math.max(0.3, overlapScore); // Minimum 30% score
+  }
+  
+  return 0.8; // If ranges are the same, give high score
 }
 
 /**

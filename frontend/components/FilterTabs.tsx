@@ -21,7 +21,7 @@ export default function FilterTabs({ activeFilter, onFilterChange, filters: cust
   const displayFilters = customFilters || filters;
   
   return (
-    <div className="flex space-x-2 mb-1">
+    <div className="flex space-x-2 mb-0">
       {displayFilters.map((filter) => (
         <button
           key={filter.id}

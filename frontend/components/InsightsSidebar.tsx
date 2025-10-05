@@ -12,12 +12,18 @@ interface InsightsSidebarProps {
   recommendedGrants?: RecommendedGrant[];
   trendingKeywords?: string[];
   upcomingDeadlines?: number;
+  totalGrants?: number;
+  grantsThisWeek?: number;
+  grantsDueSoon?: number;
 }
 
 export default function InsightsSidebar({ 
   recommendedGrants = [], 
   trendingKeywords = [],
-  upcomingDeadlines = 0 
+  upcomingDeadlines = 0,
+  totalGrants = 0,
+  grantsThisWeek = 0,
+  grantsDueSoon = 0
 }: InsightsSidebarProps) {
   const defaultRecommended = [
     { id: '1', title: 'Advanced AI for Climate Solutions', score: 92 },
@@ -123,21 +129,21 @@ export default function InsightsSidebar({
               <Clock className="w-4 h-4 text-slate-400 mr-2" />
               <span className="text-sm text-slate-300 font-medium">Grants Found</span>
             </div>
-            <span className="text-lg font-bold text-white">247</span>
+            <span className="text-lg font-bold text-white">{totalGrants}</span>
           </div>
           <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/30">
             <div className="flex items-center">
               <TrendingUp className="w-4 h-4 text-slate-400 mr-2" />
               <span className="text-sm text-slate-300 font-medium">This Week</span>
             </div>
-            <span className="text-lg font-bold text-white">+23</span>
+            <span className="text-lg font-bold text-white">+{grantsThisWeek}</span>
           </div>
           <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/30">
             <div className="flex items-center">
               <Calendar className="w-4 h-4 text-slate-400 mr-2" />
               <span className="text-sm text-slate-300 font-medium">Due Soon</span>
             </div>
-            <span className="text-lg font-bold text-red-400">12</span>
+            <span className="text-lg font-bold text-red-400">{grantsDueSoon}</span>
           </div>
         </div>
       </div>
