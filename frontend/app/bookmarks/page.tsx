@@ -9,6 +9,7 @@ import ModernGrantCard from '@/components/ModernGrantCard';
 import InsightsSidebar from '@/components/InsightsSidebar';
 import { fetchGrantsAuto } from '@/lib/grants';
 import { calculateBatchMatchScores, getDefaultUserProfile } from '@/lib/matchScore';
+import { getBookmarks, removeBookmark } from '@/lib/bookmarks';
 import { Bookmark, Search, Filter, SortAsc } from 'lucide-react';
 
 export default function BookmarksPage() {
@@ -23,27 +24,11 @@ export default function BookmarksPage() {
   useEffect(() => {
     if (!isLoaded) return;
     
-    const fetchBookmarks = async () => {
+    const loadBookmarks = () => {
       try {
         setLoading(true);
-        // For now, we'll fetch all grants and filter client-side
-        // In a real app, you'd have a dedicated bookmarks API endpoint
-        const response = await fetchGrantsAuto(searchQuery, isSignedIn ? (await getToken()) || undefined : undefined);
-        
-        if (response.ok && response.body) {
-          const grantsData = response.body.items || response.body.grants || [];
-          // Calculate match scores for all grants
-          const userProfile = getDefaultUserProfile();
-          const grantsWithScores = calculateBatchMatchScores(grantsData, userProfile);
-          // Mock bookmarked grants - in real app, this would come from user's bookmarks
-          const mockBookmarked = grantsWithScores.slice(0, 8).map((grant: any, index: number) => ({
-            ...grant,
-            bookmarkedAt: new Date(Date.now() - index * 86400000).toISOString(), // Mock dates
-          }));
-          setBookmarkedGrants(mockBookmarked);
-        } else {
-          console.error("fetchGrants failed:", response.error || "Unknown error");
-        }
+        const bookmarks = getBookmarks();
+        setBookmarkedGrants(bookmarks);
       } catch (err: any) {
         setError(err.message || 'Failed to load bookmarks');
       } finally {
@@ -51,10 +36,14 @@ export default function BookmarksPage() {
       }
     };
 
-    if (isSignedIn !== undefined) {
-      fetchBookmarks();
+    loadBookmarks();
+  }, [isLoaded]);
+
+  const handleRemoveBookmark = (grantId: string) => {
+    if (removeBookmark(grantId)) {
+      setBookmarkedGrants(prev => prev.filter(grant => grant.grantId !== grantId));
     }
-  }, [getToken, isSignedIn, searchQuery]);
+  };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -125,8 +114,8 @@ export default function BookmarksPage() {
         
         <div className="flex">
           {/* Main Content */}
-          <div className="flex-1 p-8 bg-slate-900">
-            <div className="max-w-6xl mx-auto">
+          <div className="flex-1 p-6 bg-slate-900">
+            <div className="max-w-5xl mx-auto">
               <div className="mb-8">
                 <div className="flex items-center mb-4">
                   <Bookmark className="w-8 h-8 text-teal-400 mr-3" />
@@ -242,9 +231,22 @@ export default function BookmarksPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {filteredAndSortedGrants.map((grant) => (
                     <ModernGrantCard
-                      key={grant.id}
-                      grant={grant}
-                      onBookmark={handleBookmark}
+                      key={grant.grantId || grant.id}
+                      grant={{
+                        id: grant.grantId || grant.id,
+                        title: grant.title,
+                        description: grant.description || '',
+                        summary: grant.summary,
+                        agency: grant.agency,
+                        deadline: grant.deadline,
+                        fundingMin: grant.fundingMin,
+                        fundingMax: grant.fundingMax,
+                        currency: grant.currency,
+                        url: grant.url,
+                        matchScore: grant.matchScore,
+                      }}
+                      onBookmark={handleRemoveBookmark}
+                      isBookmarked={true}
                     />
                   ))}
                 </div>

@@ -183,6 +183,9 @@ export function calculateMatchScore(grant: Grant, profile: UserProfile): MatchRe
     factors.locationMatch * weights.locationMatch +
     factors.experienceMatch * weights.experienceMatch
   );
+  
+  console.log('Match factors:', factors);
+  console.log('Calculated score:', score);
 
   return {
     score: Math.min(100, Math.max(0, score)),

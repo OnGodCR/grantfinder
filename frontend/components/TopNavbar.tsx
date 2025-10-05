@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Bell, User, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, Bell, User, ChevronDown, Bookmark } from 'lucide-react';
 import Link from 'next/link';
 
 interface TopNavbarProps {
@@ -10,6 +10,21 @@ interface TopNavbarProps {
 
 export default function TopNavbar({ onSearch }: TopNavbarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowProfileDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +52,12 @@ export default function TopNavbar({ onSearch }: TopNavbarProps) {
 
         {/* Right side actions */}
         <div className="flex items-center space-x-3">
+          {/* Bookmarks */}
+          <Link href="/bookmarks" className="relative p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all duration-200 hover:scale-105">
+            <Bookmark className="h-5 w-5" />
+            <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-teal-500 animate-pulse"></span>
+          </Link>
+
           {/* Notifications */}
           <Link href="/notifications" className="relative p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all duration-200 hover:scale-105">
             <Bell className="h-5 w-5" />
@@ -44,13 +65,50 @@ export default function TopNavbar({ onSearch }: TopNavbarProps) {
           </Link>
 
           {/* Profile Dropdown */}
-          <div className="relative">
-            <Link href="/profile" className="flex items-center space-x-3 p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all duration-200 hover:scale-105">
+          <div className="relative" ref={dropdownRef}>
+            <button 
+              onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+              className="flex items-center space-x-3 p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all duration-200 hover:scale-105"
+            >
               <div className="w-9 h-9 bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl flex items-center justify-center">
                 <User className="w-5 h-5" />
               </div>
-              <ChevronDown className="h-4 w-4" />
-            </Link>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {showProfileDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-slate-800 rounded-xl shadow-lg border border-slate-700/50 py-2 z-50">
+                <Link 
+                  href="/profile" 
+                  className="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
+                  onClick={() => setShowProfileDropdown(false)}
+                >
+                  <User className="w-4 h-4 mr-3" />
+                  Profile Settings
+                </Link>
+                <Link 
+                  href="/bookmarks" 
+                  className="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
+                  onClick={() => setShowProfileDropdown(false)}
+                >
+                  <Bookmark className="w-4 h-4 mr-3" />
+                  My Bookmarks
+                </Link>
+                <Link 
+                  href="/notifications" 
+                  className="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
+                  onClick={() => setShowProfileDropdown(false)}
+                >
+                  <Bell className="w-4 h-4 mr-3" />
+                  Notifications
+                </Link>
+                <div className="border-t border-slate-700/50 my-2"></div>
+                <button className="flex items-center w-full px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors">
+                  <User className="w-4 h-4 mr-3" />
+                  Sign Out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Calendar, DollarSign, ExternalLink, Bookmark, Building } from 'lucide-react';
 import MatchScoreDetails from './MatchScoreDetails';
+import { addBookmark, removeBookmark, isBookmarked } from '@/lib/bookmarks';
 
 interface Grant {
   id: string;
@@ -26,8 +27,27 @@ interface ModernGrantCardProps {
   isBookmarked?: boolean;
 }
 
-export default function ModernGrantCard({ grant, onBookmark, isBookmarked = false }: ModernGrantCardProps) {
+export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propIsBookmarked = false }: ModernGrantCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+
+  useEffect(() => {
+    setBookmarked(isBookmarked(grant.id));
+  }, [grant.id]);
+
+  const handleBookmarkToggle = () => {
+    if (bookmarked) {
+      if (removeBookmark(grant.id)) {
+        setBookmarked(false);
+        onBookmark?.(grant.id);
+      }
+    } else {
+      if (addBookmark(grant)) {
+        setBookmarked(true);
+        onBookmark?.(grant.id);
+      }
+    }
+  };
 
   // Calculate days until deadline
   const getDaysUntilDeadline = (deadline: string) => {
@@ -144,14 +164,14 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked = fals
       <div className="flex items-center justify-between pt-5 border-t border-slate-700/50">
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => onBookmark?.(grant.id)}
+            onClick={handleBookmarkToggle}
             className={`p-3 rounded-xl transition-all duration-200 ${
-              isBookmarked
+              bookmarked
                 ? 'bg-teal-500/20 text-teal-400 shadow-sm border border-teal-500/30'
                 : 'text-slate-400 hover:text-teal-400 hover:bg-teal-500/10'
             }`}
           >
-            <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-current' : ''}`} />
+            <Bookmark className={`w-4 h-4 ${bookmarked ? 'fill-current' : ''}`} />
           </button>
           
           {grant.url && (
