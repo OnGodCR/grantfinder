@@ -15,14 +15,13 @@ import {
 
 const navigation = [
   { name: 'Discover', href: '/discover', icon: Search },
-  { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark },
 ];
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800/50">
+    <div className="fixed inset-y-0 left-0 z-50 w-56 bg-slate-900 border-r border-slate-800/50">
       {/* Logo */}
       <div className="flex items-center px-6 py-5 border-b border-slate-800/50">
         <div className="flex items-center space-x-3">

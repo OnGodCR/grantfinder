@@ -159,11 +159,11 @@ export default function NotificationsPage() {
     <div className="min-h-screen bg-slate-900">
       <DashboardSidebar />
       
-      <div className="ml-64">
+      <div className="ml-56">
         <TopNavbar onSearch={() => {}} />
         
         <div className="p-6 bg-slate-900">
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
               <div>

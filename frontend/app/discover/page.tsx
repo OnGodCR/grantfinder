@@ -97,13 +97,13 @@ export default function DiscoverPage() {
     <div className="min-h-screen bg-slate-900">
       <DashboardSidebar />
       
-      <div className="ml-64">
+      <div className="ml-56">
         <TopNavbar onSearch={handleSearch} />
         
         <div className="flex">
           {/* Main Content */}
           <div className="flex-1 p-6 bg-slate-900">
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               <h1 className="text-3xl font-bold text-white mb-8">Discover Grants</h1>
               
               <FilterTabs activeFilter={activeFilter} onFilterChange={handleFilterChange} />

@@ -109,13 +109,13 @@ export default function BookmarksPage() {
     <div className="min-h-screen bg-slate-900">
       <DashboardSidebar />
       
-      <div className="ml-64">
+      <div className="ml-56">
         <TopNavbar onSearch={handleSearch} />
         
         <div className="flex">
           {/* Main Content */}
           <div className="flex-1 p-6 bg-slate-900">
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               <div className="mb-8">
                 <div className="flex items-center mb-4">
                   <Bookmark className="w-8 h-8 text-teal-400 mr-3" />
