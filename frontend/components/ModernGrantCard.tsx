@@ -80,24 +80,24 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
 
   return (
     <div
-      className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-700/50 hover:border-teal-400/50 hover:-translate-y-1 group"
+      className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-700/50 hover:border-teal-400/50 hover:-translate-y-1 group h-full"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-white mb-2 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex-1 pr-4">
+          <h3 className="text-xl font-semibold text-white mb-3 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
             {grant.title}
           </h3>
-          <p className="text-sm text-slate-300 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'}}>
+          <p className="text-base text-slate-300 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'}}>
             {grant.summary || grant.description}
           </p>
         </div>
         
         {/* Match Score Circle */}
-        <div className="ml-6 flex-shrink-0">
-          <div className="relative w-20 h-20">
-            <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 36 36">
+        <div className="ml-4 flex-shrink-0">
+          <div className="relative w-24 h-24">
+            <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
               <path
                 className="text-slate-200"
                 stroke="currentColor"
@@ -116,38 +116,38 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-sm font-bold text-white">{matchScore}%</span>
+              <span className="text-base font-bold text-white">{matchScore}%</span>
             </div>
           </div>
-          <p className="text-xs text-slate-400 text-center mt-2 font-medium">Match Score</p>
+          <p className="text-sm text-slate-400 text-center mt-2 font-medium">Match Score</p>
         </div>
       </div>
 
       {/* Grant Details */}
-      <div className="space-y-4 mb-6">
+      <div className="space-y-5 mb-8">
         {grant.agency && (
-          <div className="flex items-center text-sm text-slate-300">
-            <Building className="w-4 h-4 mr-3 text-slate-400" />
+          <div className="flex items-center text-base text-slate-300">
+            <Building className="w-5 h-5 mr-3 text-slate-400" />
             <span className="font-medium">{grant.agency}</span>
           </div>
         )}
         
         {(grant.fundingMin || grant.fundingMax) && (
-          <div className="flex items-center text-sm text-slate-300">
-            <DollarSign className="w-4 h-4 mr-3 text-slate-400" />
+          <div className="flex items-center text-base text-slate-300">
+            <DollarSign className="w-5 h-5 mr-3 text-slate-400" />
             <span className="font-medium">{formatFunding(grant.fundingMin, grant.fundingMax, grant.currency)}</span>
           </div>
         )}
         
         {grant.deadline && (
-          <div className="flex items-center text-sm">
-            <Calendar className="w-4 h-4 mr-3 text-slate-400" />
+          <div className="flex items-center text-base">
+            <Calendar className="w-5 h-5 mr-3 text-slate-400" />
             <span className="text-slate-300 font-medium">Deadline:</span>
             <span className={`ml-2 font-semibold ${getUrgencyColor(daysUntilDeadline!)}`}>
               {new Date(grant.deadline).toLocaleDateString()}
             </span>
             {daysUntilDeadline && (
-              <span className={`ml-3 text-xs px-3 py-1 rounded-full font-semibold ${
+              <span className={`ml-3 text-sm px-3 py-1 rounded-full font-semibold ${
                 daysUntilDeadline <= 7 ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
                 daysUntilDeadline <= 14 ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' :
                 daysUntilDeadline <= 30 ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
@@ -161,8 +161,8 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-between pt-5 border-t border-slate-700/50">
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-between pt-6 border-t border-slate-700/50">
+        <div className="flex items-center space-x-3">
           <button
             onClick={handleBookmarkToggle}
             className={`p-3 rounded-xl transition-all duration-200 ${
@@ -171,7 +171,7 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
                 : 'text-slate-400 hover:text-teal-400 hover:bg-teal-500/10'
             }`}
           >
-            <Bookmark className={`w-4 h-4 ${bookmarked ? 'fill-current' : ''}`} />
+            <Bookmark className={`w-5 h-5 ${bookmarked ? 'fill-current' : ''}`} />
           </button>
           
           {grant.url && (
@@ -181,14 +181,14 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
               rel="noopener noreferrer"
               className="p-3 text-slate-400 hover:text-teal-400 hover:bg-teal-500/10 rounded-xl transition-all duration-200"
             >
-              <ExternalLink className="w-4 h-4" />
+              <ExternalLink className="w-5 h-5" />
             </a>
           )}
         </div>
         
         <Link
           href={`/grants/${grant.id}`}
-          className="px-5 py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white text-sm font-semibold rounded-xl hover:from-teal-700 hover:to-teal-800 transition-all duration-200 shadow-lg hover:shadow-xl inline-block text-center"
+          className="px-6 py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white text-base font-semibold rounded-xl hover:from-teal-700 hover:to-teal-800 transition-all duration-200 shadow-lg hover:shadow-xl inline-block text-center"
         >
           View Details
         </Link>

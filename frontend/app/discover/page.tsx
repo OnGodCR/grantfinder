@@ -102,9 +102,9 @@ export default function DiscoverPage() {
         
         <div className="flex gap-0">
           {/* Main Content */}
-          <div className="flex-1 p-4 bg-slate-900">
+          <div className="flex-1 p-2 bg-slate-900">
             <div className="w-full">
-              <h1 className="text-2xl font-bold text-white mb-4">Discover Grants</h1>
+              <h1 className="text-2xl font-bold text-white mb-3">Discover Grants</h1>
               
               <FilterTabs activeFilter={activeFilter} onFilterChange={handleFilterChange} />
               
@@ -129,7 +129,7 @@ export default function DiscoverPage() {
               )}
               
               {!loading && !error && filteredGrants.length > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mt-2">
                   {filteredGrants.map((grant) => (
                     <ModernGrantCard
                       key={grant.id}
