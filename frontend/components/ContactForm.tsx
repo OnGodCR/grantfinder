@@ -39,13 +39,13 @@ export default function ContactForm({
   }
 
   return (
-    <section className="mt-12 grid gap-8 md:grid-cols-[minmax(0,1fr)_360px]">
+    <section className="grid gap-8 md:grid-cols-[minmax(0,1fr)_360px]">
       {/* Form */}
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-soft ring-1 ring-white/10">
-        <h2 className="text-2xl font-semibold text-text">Send a message</h2>
-        <p className="mt-2 text-body text-sm">
+      <div className="rounded-3xl border border-slate-700/50 bg-slate-800/50 p-8 shadow-xl ring-1 ring-slate-700/30">
+        <h2 className="text-3xl font-bold text-white mb-4">Send a message</h2>
+        <p className="text-slate-300 text-lg mb-6">
           Your message will open in your email client addressed to{' '}
-          <span className="font-medium">{EMAILS[topic]}</span>.
+          <span className="font-semibold text-teal-400">{EMAILS[topic]}</span>.
         </p>
 
         <form className="mt-6 grid gap-4" onSubmit={onSubmit} noValidate>

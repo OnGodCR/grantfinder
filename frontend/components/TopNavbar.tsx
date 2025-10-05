@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, Bell, User, ChevronDown, Bookmark, Shield, Trash2, Settings, LogOut } from 'lucide-react';
+import { Search, Bell, User, ChevronDown, Bookmark, Trash2, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@clerk/nextjs';
 
@@ -59,11 +59,6 @@ export default function TopNavbar({ onSearch }: TopNavbarProps) {
     }
   };
 
-  const handle2FA = () => {
-    // In a real app, you'd redirect to 2FA settings
-    alert('2FA settings would be implemented here');
-    setShowProfileDropdown(false);
-  };
 
   return (
     <div className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800/50">
@@ -134,21 +129,6 @@ export default function TopNavbar({ onSearch }: TopNavbarProps) {
                 >
                   <Bell className="w-4 h-4 mr-3" />
                   Notifications
-                </Link>
-                <button 
-                  onClick={handle2FA}
-                  className="flex items-center w-full px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
-                >
-                  <Shield className="w-4 h-4 mr-3" />
-                  Two-Factor Auth
-                </button>
-                <Link 
-                  href="/settings" 
-                  className="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
-                  onClick={() => setShowProfileDropdown(false)}
-                >
-                  <Settings className="w-4 h-4 mr-3" />
-                  Account Settings
                 </Link>
                 <div className="border-t border-slate-700/50 my-2"></div>
                 <button 

@@ -60,6 +60,22 @@ GRANT_KEYWORDS = [
     if kw.strip()
 ]
 
+# Keywords that indicate non-grant content (FAQ, help, etc.)
+EXCLUDE_KEYWORDS = [
+    kw.strip().lower() for kw in
+    (os.getenv("SCRAPER_EXCLUDE_KEYWORDS") or
+     "faq, frequently asked questions, help, support, contact, about, "
+     "privacy policy, terms of service, legal, disclaimer, "
+     "news, blog, press release, announcement, update, "
+     "login, sign in, register, account, profile, "
+     "search, browse, directory, listing, index, "
+     "home, main, welcome, overview, introduction, "
+     "error, 404, not found, page not found, "
+     "maintenance, downtime, under construction"
+    ).split(",")
+    if kw.strip()
+]
+
 # Max response bytes we’ll read from any HTTP fetch
 MAX_BODY = int(os.getenv("SCRAPER_MAX_BODY_BYTES", "2000000"))
 
@@ -79,7 +95,12 @@ DEADLINE_HINTS = [
 AMOUNT_HINTS = [
     h.strip().lower()
     for h in (os.getenv("SCRAPER_AMOUNT_HINTS") or
-              "amount, award, funding, budget, total costs, up to, maximum, min, max, $, €, £"
+              "amount, award, funding, budget, total costs, up to, maximum, min, max, "
+              "grant amount, award amount, funding amount, budget amount, "
+              "total award, maximum award, minimum award, award range, "
+              "funding range, budget range, cost range, "
+              "dollars, euros, pounds, usd, eur, gbp, "
+              "million, thousand, k, m, billion"
              ).split(",")
     if h.strip()
 ]
@@ -274,17 +295,79 @@ def parse_amounts(text: str, default_currency: str = "USD") -> Tuple[int,int,str
     if not text: return (0,0,default_currency)
     currency = default_currency
     vals = []
-    for m in re.findall(r"([$€£])\s?([\d,\.]+)", text):
-        sym, num = m
-        if sym == "€": currency = "EUR"
-        elif sym == "£": currency = "GBP"
-        try:
-            v = int(float(num.replace(",", "")))
-            vals.append(v)
-        except Exception:
-            pass
+    
+    # Enhanced patterns for amount extraction
+    patterns = [
+        # Currency symbols with numbers
+        r"([$€£])\s?([\d,\.]+(?:\s?[km]?)?)",
+        # Numbers with currency words
+        r"([\d,\.]+(?:\s?[km]?)?)\s*(?:dollars?|euros?|pounds?|usd|eur|gbp)",
+        # "up to", "maximum", "minimum" patterns
+        r"(?:up\s+to|maximum|max)\s*([$€£]?)\s?([\d,\.]+(?:\s?[km]?)?)",
+        # Range patterns like "$50,000 - $100,000"
+        r"([$€£])\s?([\d,\.]+(?:\s?[km]?)?)\s*[-–—]\s*[$€£]?\s?([\d,\.]+(?:\s?[km]?)?)",
+        # "between X and Y" patterns
+        r"between\s+([$€£]?)\s?([\d,\.]+(?:\s?[km]?)?)\s+and\s+[$€£]?\s?([\d,\.]+(?:\s?[km]?)?)",
+    ]
+    
+    for pattern in patterns:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            groups = match.groups()
+            if len(groups) >= 2:
+                # Handle range patterns
+                if len(groups) == 3 and groups[2]:
+                    # Range pattern: extract both values
+                    sym1, num1, num2 = groups[0], groups[1], groups[2]
+                    if sym1 == "€": currency = "EUR"
+                    elif sym1 == "£": currency = "GBP"
+                    
+                    try:
+                        v1 = _parse_number(num1)
+                        v2 = _parse_number(num2)
+                        if v1 and v2:
+                            vals.extend([v1, v2])
+                    except Exception:
+                        pass
+                else:
+                    # Single value pattern
+                    sym, num = groups[0], groups[1]
+                    if sym == "€": currency = "EUR"
+                    elif sym == "£": currency = "GBP"
+                    
+                    try:
+                        v = _parse_number(num)
+                        if v:
+                            vals.append(v)
+                    except Exception:
+                        pass
+    
     if not vals: return (0,0,currency)
     return (min(vals), max(vals), currency)
+
+def _parse_number(num_str: str) -> Optional[int]:
+    """Parse a number string with k/m suffixes"""
+    if not num_str:
+        return None
+    
+    # Clean the number
+    num_str = num_str.replace(",", "").strip()
+    
+    # Handle k/m suffixes
+    multiplier = 1
+    if num_str.lower().endswith('k'):
+        multiplier = 1000
+        num_str = num_str[:-1]
+    elif num_str.lower().endswith('m'):
+        multiplier = 1000000
+        num_str = num_str[:-1]
+    elif num_str.lower().endswith('b'):
+        multiplier = 1000000000
+        num_str = num_str[:-1]
+    
+    try:
+        return int(float(num_str) * multiplier)
+    except Exception:
+        return None
 
 def parse_deadline(text: str) -> Optional[str]:
     if not text: return None
@@ -317,6 +400,7 @@ def is_allowed_tld(url: str) -> bool:
 def relevance_score(title: str, body: str) -> int:
     t = (title or "").lower()
     b = (body or "").lower()
+    combined_text = f"{t} {b}"
 
     def hits(text: str, kws: set[str]) -> int:
         score = 0
@@ -325,12 +409,28 @@ def relevance_score(title: str, body: str) -> int:
                 score += 1
         return score
 
+    # Check for exclusion keywords first
+    if any(exclude_kw in combined_text for exclude_kw in EXCLUDE_KEYWORDS):
+        return 0  # Immediately reject if contains exclusion keywords
+
     score = 0
     score += TITLE_WEIGHT * hits(t, GRANT_KEYWORDS)
     score += BODY_WEIGHT  * hits(b, GRANT_KEYWORDS)
-    if any(h in t or h in b for h in DEADLINE_HINTS): score += 1
-    if any(h in t or h in b for h in AMOUNT_HINTS):   score += 1
-    return score
+    
+    # Bonus points for grant-specific indicators
+    if any(h in t or h in b for h in DEADLINE_HINTS): score += 2
+    if any(h in t or h in b for h in AMOUNT_HINTS):   score += 2
+    
+    # Additional bonus for strong grant indicators
+    strong_indicators = ["rfp", "rfa", "solicitation", "proposal", "application", "deadline", "funding opportunity"]
+    if any(indicator in combined_text for indicator in strong_indicators):
+        score += 3
+    
+    # Penalty for very short content (likely not a real grant)
+    if len(combined_text.strip()) < 100:
+        score -= 2
+    
+    return max(0, score)  # Ensure non-negative score
 
 def looks_like_grant_page(url: str, title: str, description: str) -> bool:
     return relevance_score(title, description) >= RELEVANCE_MIN_SCORE
