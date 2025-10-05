@@ -59,21 +59,21 @@ export interface MatchResult {
  * Calculate match score between a grant and user profile
  */
 export function calculateMatchScore(grant: Grant, profile: UserProfile): MatchResult {
-  // Add fallback for basic scoring if grant data is incomplete
-  const hasBasicData = grant.title && grant.description;
+  // More lenient fallback - only use if truly no data
+  const hasBasicData = grant.title || grant.description;
   if (!hasBasicData) {
     return {
-      score: 25, // Default low score for incomplete data
+      score: 15, // Very low score for no data
       factors: {
-        keywordMatch: 0.2,
-        fundingMatch: 0.3,
-        deadlineMatch: 0.2,
-        agencyMatch: 0.2,
-        typeMatch: 0.2,
-        locationMatch: 0.2,
-        experienceMatch: 0.2,
+        keywordMatch: 0.1,
+        fundingMatch: 0.2,
+        deadlineMatch: 0.1,
+        agencyMatch: 0.1,
+        typeMatch: 0.1,
+        locationMatch: 0.1,
+        experienceMatch: 0.1,
       },
-      explanation: ['Limited data available for accurate matching'],
+      explanation: ['No data available for matching'],
       recommendations: ['Review grant details for better assessment'],
     };
   }
@@ -227,15 +227,15 @@ function calculateKeywordMatch(grant: Grant, profile: UserProfile): number {
     
     for (const word of words) {
       if (word.length > 2) { // Ignore short words
-        // More flexible matching - check for partial matches too
+        // Very flexible matching - check for partial matches
         if (grantText.includes(word)) {
-          interestScore += 0.3; // Base score for partial match
+          interestScore += 0.5; // Higher base score for partial match
         }
         
         // Check for exact word matches
         const regex = new RegExp(`\\b${word}\\b`, 'gi');
         const matches = (grantText.match(regex) || []).length;
-        interestScore += Math.min(matches * 0.2, 0.7); // Cap at 0.7 per word
+        interestScore += Math.min(matches * 0.3, 0.5); // Cap at 0.5 per word
       }
     }
     
@@ -243,26 +243,28 @@ function calculateKeywordMatch(grant: Grant, profile: UserProfile): number {
     totalWeight += 1;
   }
 
-  // If no matches found, give a small score based on common research terms
+  // If no matches found, give a decent score based on common research terms
   if (matchCount === 0) {
-    const commonTerms = ['research', 'study', 'investigation', 'analysis', 'development', 'innovation', 'technology', 'science'];
+    const commonTerms = ['research', 'study', 'investigation', 'analysis', 'development', 'innovation', 'technology', 'science', 'grant', 'funding', 'project', 'program'];
     let commonMatches = 0;
     for (const term of commonTerms) {
       if (grantText.includes(term)) {
-        commonMatches += 0.1;
+        commonMatches += 0.15; // Higher score for common terms
       }
     }
-    return Math.min(commonMatches, 0.3); // Max 30% for common terms
+    return Math.min(commonMatches, 0.6); // Max 60% for common terms
   }
 
-  return totalWeight > 0 ? matchCount / totalWeight : 0.1; // Minimum 10% score
+  // Ensure we always get a decent score
+  const baseScore = totalWeight > 0 ? matchCount / totalWeight : 0.3;
+  return Math.max(baseScore, 0.3); // Minimum 30% score
 }
 
 /**
  * Calculate funding amount matching score
  */
 function calculateFundingMatch(grant: Grant, profile: UserProfile): number {
-  if (!grant.fundingMin && !grant.fundingMax) return 0.6; // Unknown funding - give decent score
+  if (!grant.fundingMin && !grant.fundingMax) return 0.7; // Unknown funding - give good score
 
   const grantMin = grant.fundingMin || 0;
   const grantMax = grant.fundingMax || grantMin;
@@ -271,10 +273,10 @@ function calculateFundingMatch(grant: Grant, profile: UserProfile): number {
 
   // Check if grant funding overlaps with user preferences
   if (grantMax < userMin) {
-    return 0.2; // Grant max is below user minimum - still give some score
+    return 0.4; // Grant max is below user minimum - still give decent score
   }
   if (grantMin > userMax) {
-    return 0.2; // Grant min is above user maximum - still give some score
+    return 0.4; // Grant min is above user maximum - still give decent score
   }
 
   // Calculate overlap percentage
@@ -285,39 +287,35 @@ function calculateFundingMatch(grant: Grant, profile: UserProfile): number {
 
   if (totalRange > 0) {
     const overlapScore = overlap / totalRange;
-    return Math.max(0.3, overlapScore); // Minimum 30% score
+    return Math.max(0.5, overlapScore); // Minimum 50% score
   }
   
-  return 0.8; // If ranges are the same, give high score
+  return 0.9; // If ranges are the same, give high score
 }
 
 /**
  * Calculate deadline matching score
  */
 function calculateDeadlineMatch(grant: Grant, profile: UserProfile): number {
-  if (!grant.deadline) return 0.5; // Unknown deadline
+  if (!grant.deadline) return 0.7; // Unknown deadline - give good score
 
   const deadline = new Date(grant.deadline);
   const now = new Date();
   const daysUntilDeadline = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (daysUntilDeadline < 0) return 0; // Deadline has passed
+  if (daysUntilDeadline < 0) return 0.1; // Deadline has passed - very low score
 
-  // Optimal range: 30-90 days
-  const optimalMin = 30;
-  const optimalMax = 90;
-  const buffer = profile.deadlineBuffer;
-
-  if (daysUntilDeadline >= optimalMin && daysUntilDeadline <= optimalMax) {
+  // More generous scoring
+  if (daysUntilDeadline >= 30 && daysUntilDeadline <= 90) {
     return 1; // Perfect timing
-  } else if (daysUntilDeadline >= buffer && daysUntilDeadline < optimalMin) {
-    return 0.8; // Good timing, slightly rushed
-  } else if (daysUntilDeadline > optimalMax) {
-    return 0.6; // Plenty of time, but not urgent
+  } else if (daysUntilDeadline >= 14 && daysUntilDeadline < 30) {
+    return 0.9; // Good timing, slightly rushed
+  } else if (daysUntilDeadline > 90) {
+    return 0.8; // Plenty of time
   } else if (daysUntilDeadline >= 7) {
-    return 0.4; // Very tight deadline
+    return 0.6; // Tight deadline but manageable
   } else {
-    return 0.1; // Extremely tight deadline
+    return 0.3; // Very tight deadline
   }
 }
 
@@ -325,7 +323,7 @@ function calculateDeadlineMatch(grant: Grant, profile: UserProfile): number {
  * Calculate agency matching score
  */
 function calculateAgencyMatch(grant: Grant, profile: UserProfile): number {
-  if (!grant.agency) return 0.5; // Unknown agency
+  if (!grant.agency) return 0.6; // Unknown agency - give decent score
 
   const agency = grant.agency.toLowerCase();
   const preferredAgencies = profile.preferredAgencies.map(a => a.toLowerCase());
@@ -347,26 +345,26 @@ function calculateAgencyMatch(grant: Grant, profile: UserProfile): number {
       }
     }
     if (matchCount > 0) {
-      return 0.6 + (matchCount / words.length) * 0.4;
+      return 0.7 + (matchCount / words.length) * 0.3;
     }
   }
 
-  // Check for common agency types
-  const commonAgencies = ['nsf', 'nih', 'doe', 'darpa', 'foundation', 'institute', 'university'];
+  // Check for common agency types - give higher scores
+  const commonAgencies = ['nsf', 'nih', 'doe', 'darpa', 'foundation', 'institute', 'university', 'government', 'federal', 'state'];
   for (const common of commonAgencies) {
     if (agency.includes(common)) {
-      return 0.4;
+      return 0.6; // Higher score for common agencies
     }
   }
 
-  return 0.2; // Unknown or uncommon agency
+  return 0.4; // Unknown agency - still give decent score
 }
 
 /**
  * Calculate grant type matching score
  */
 function calculateTypeMatch(grant: Grant, profile: UserProfile): number {
-  if (!grant.grantType && !grant.category) return 0.5; // Unknown type
+  if (!grant.grantType && !grant.category) return 0.6; // Unknown type - give decent score
 
   const grantType = `${grant.grantType || ''} ${grant.category || ''}`.toLowerCase();
   const preferredTypes = profile.preferredGrantTypes.map(t => t.toLowerCase());
@@ -388,21 +386,29 @@ function calculateTypeMatch(grant: Grant, profile: UserProfile): number {
       }
     }
     if (matchCount > 0) {
-      return 0.5 + (matchCount / words.length) * 0.5;
+      return 0.6 + (matchCount / words.length) * 0.4;
     }
   }
 
-  return 0.3; // No clear match
+  // Check for common grant types
+  const commonTypes = ['research', 'fellowship', 'grant', 'funding', 'scholarship', 'award', 'project'];
+  for (const common of commonTypes) {
+    if (grantType.includes(common)) {
+      return 0.5; // Give decent score for common types
+    }
+  }
+
+  return 0.4; // No clear match - still give decent score
 }
 
 /**
  * Calculate location matching score
  */
 function calculateLocationMatch(grant: Grant, profile: UserProfile): number {
-  if (!grant.location && !profile.location) return 0.5; // No location info
+  if (!grant.location && !profile.location) return 0.7; // No location info - give good score
 
-  if (!grant.location) return 0.5; // Grant location unknown
-  if (!profile.location) return 0.5; // User location unknown
+  if (!grant.location) return 0.7; // Grant location unknown - give good score
+  if (!profile.location) return 0.7; // User location unknown - give good score
 
   const grantLocation = grant.location.toLowerCase();
   const userLocation = profile.location.toLowerCase();
@@ -423,15 +429,15 @@ function calculateLocationMatch(grant: Grant, profile: UserProfile): number {
   }
 
   if (grantCountry && userCountry) {
-    return grantCountry === userCountry ? 0.8 : 0.2;
+    return grantCountry === userCountry ? 0.9 : 0.5; // Higher score for different countries
   }
 
   // Check for remote/international opportunities
   if (grantLocation.includes('remote') || grantLocation.includes('international') || grantLocation.includes('global')) {
-    return 0.7;
+    return 0.8;
   }
 
-  return 0.3; // No clear location match
+  return 0.6; // No clear location match - still give decent score
 }
 
 /**
@@ -441,36 +447,36 @@ function calculateExperienceMatch(grant: Grant, profile: UserProfile): number {
   const grantText = `${grant.title} ${grant.description} ${grant.summary || ''} ${grant.eligibility || ''}`.toLowerCase();
   
   const experienceKeywords = {
-    beginner: ['undergraduate', 'student', 'entry-level', 'junior', 'novice', 'learning'],
-    intermediate: ['graduate', 'masters', 'phd student', 'early career', 'postdoc'],
-    advanced: ['senior', 'principal', 'lead', 'experienced', 'established'],
-    expert: ['director', 'chief', 'head', 'distinguished', 'emeritus', 'pioneer']
+    beginner: ['undergraduate', 'student', 'entry-level', 'junior', 'novice', 'learning', 'young', 'emerging'],
+    intermediate: ['graduate', 'masters', 'phd student', 'early career', 'postdoc', 'researcher', 'scholar'],
+    advanced: ['senior', 'principal', 'lead', 'experienced', 'established', 'professional', 'expert'],
+    expert: ['director', 'chief', 'head', 'distinguished', 'emeritus', 'pioneer', 'leader', 'senior']
   };
 
   const userLevel = profile.experienceLevel;
   const userKeywords = experienceKeywords[userLevel] || [];
   
-  let matchScore = 0.5; // Default neutral score
+  let matchScore = 0.6; // Higher default score
 
   // Check for positive matches
   for (const keyword of userKeywords) {
     if (grantText.includes(keyword)) {
-      matchScore += 0.1;
+      matchScore += 0.15; // Higher bonus for matches
     }
   }
 
-  // Check for negative matches (too advanced or too basic)
+  // Check for negative matches (too advanced or too basic) - less penalty
   for (const [level, keywords] of Object.entries(experienceKeywords)) {
     if (level !== userLevel) {
       for (const keyword of keywords) {
         if (grantText.includes(keyword)) {
-          matchScore -= 0.05;
+          matchScore -= 0.02; // Less penalty
         }
       }
     }
   }
 
-  return Math.min(1, Math.max(0, matchScore));
+  return Math.min(1, Math.max(0.4, matchScore)); // Minimum 40% score
 }
 
 /**
