@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import { ArrowLeft, User, Bell, Shield, Key, Trash2, Save } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [settings, setSettings] = useState({
     email: user?.emailAddresses?.[0]?.emailAddress || '',
     firstName: user?.firstName || '',
