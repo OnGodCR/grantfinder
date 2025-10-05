@@ -2,6 +2,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import axios from "axios";
 
 const router = Router();
 
@@ -343,6 +344,104 @@ router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, r
   } catch (err: any) {
     console.error("grants route error:", err?.message || err);
     return res.status(500).json({ ok: false, error: "server error in /internal/grants/search" });
+  }
+});
+
+/** ---------- grant validation endpoint ---------- */
+router.post("/validate", requireInternalToken, async (req: Request, res: Response) => {
+  try {
+    const { grantIds } = req.body;
+    
+    if (!grantIds || !Array.isArray(grantIds)) {
+      return res.status(400).json({ error: "grantIds array is required" });
+    }
+
+    const grants = await prisma.grant.findMany({
+      where: { id: { in: grantIds } },
+      select: { id: true, url: true, title: true }
+    });
+
+    const validationResults = await Promise.allSettled(
+      grants.map(async (grant) => {
+        if (!grant.url) {
+          return { id: grant.id, valid: false, reason: "No URL" };
+        }
+
+        try {
+          const response = await axios.head(grant.url, {
+            timeout: 10000,
+            maxRedirects: 5,
+            validateStatus: (status) => status < 500 // Accept 4xx as valid responses
+          });
+          
+          const valid = response.status < 400;
+          return {
+            id: grant.id,
+            valid,
+            status: response.status,
+            reason: valid ? "URL accessible" : `HTTP ${response.status}`
+          };
+        } catch (error: any) {
+          return {
+            id: grant.id,
+            valid: false,
+            reason: error.code === 'ENOTFOUND' ? 'URL not found' : 
+                   error.code === 'ECONNREFUSED' ? 'Connection refused' :
+                   error.code === 'ETIMEDOUT' ? 'Request timeout' :
+                   error.message || 'Unknown error'
+          };
+        }
+      })
+    );
+
+    const results = validationResults.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        return {
+          id: grants[index]?.id || 'unknown',
+          valid: false,
+          reason: 'Validation failed'
+        };
+      }
+    });
+
+    // Update database with validation results
+    const invalidGrants = results.filter(r => !r.valid);
+    if (invalidGrants.length > 0) {
+      await prisma.grant.updateMany({
+        where: { id: { in: invalidGrants.map(g => g.id) } },
+        data: { 
+          isValid: false,
+          lastValidated: new Date(),
+          validationError: invalidGrants.map(g => g.reason).join('; ')
+        }
+      });
+    }
+
+    const validGrants = results.filter(r => r.valid);
+    if (validGrants.length > 0) {
+      await prisma.grant.updateMany({
+        where: { id: { in: validGrants.map(g => g.id) } },
+        data: { 
+          isValid: true,
+          lastValidated: new Date(),
+          validationError: null
+        }
+      });
+    }
+
+    return res.json({
+      ok: true,
+      total: results.length,
+      valid: validGrants.length,
+      invalid: invalidGrants.length,
+      results
+    });
+
+  } catch (error: any) {
+    console.error("Grant validation error:", error);
+    return res.status(500).json({ error: "Failed to validate grants" });
   }
 });
 

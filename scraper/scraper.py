@@ -898,9 +898,71 @@ def post_items(items: List[Dict[str, Any]]) -> int:
     return posted
 
 # ----------------- MAIN -----------------
+def validate_existing_grants():
+    """Validate existing grants in the database"""
+    log("info", "Starting grant validation...")
+    
+    try:
+        # Get all grant IDs from the database
+        response = requests.get(
+            f"{BACKEND_INTERNAL_URL.replace('/api/internal/grants', '')}/api/internal/grants",
+            headers={"Authorization": f"Bearer {INTERNAL_API_TOKEN}"},
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            log("error", "Failed to fetch grants for validation", status=response.status_code)
+            return
+        
+        grants_data = response.json()
+        if not grants_data.get('ok') or not grants_data.get('grants'):
+            log("warn", "No grants found for validation")
+            return
+        
+        grants = grants_data['grants']
+        grant_ids = [grant['id'] for grant in grants if grant.get('id')]
+        
+        if not grant_ids:
+            log("warn", "No grant IDs found for validation")
+            return
+        
+        log("info", f"Validating {len(grant_ids)} grants...")
+        
+        # Validate grants in batches
+        batch_size = 50
+        for i in range(0, len(grant_ids), batch_size):
+            batch = grant_ids[i:i + batch_size]
+            
+            validation_response = requests.post(
+                f"{BACKEND_INTERNAL_URL.replace('/api/internal/grants', '')}/api/internal/grants/validate",
+                headers={"Authorization": f"Bearer {INTERNAL_API_TOKEN}"},
+                json={"grantIds": batch},
+                timeout=60
+            )
+            
+            if validation_response.status_code == 200:
+                result = validation_response.json()
+                log("info", f"Batch {i//batch_size + 1}: {result.get('valid', 0)} valid, {result.get('invalid', 0)} invalid")
+            else:
+                log("error", f"Validation failed for batch {i//batch_size + 1}", status=validation_response.status_code)
+            
+            # Small delay between batches
+            time.sleep(1)
+        
+        log("info", "Grant validation completed")
+        
+    except Exception as e:
+        log("error", "Grant validation failed", error=str(e))
+
 def main():
     auth_sanity_check()
     total_posted = 0
+    
+    # Check if this is a validation-only run
+    if "--validate-existing" in sys.argv:
+        validate_existing_grants()
+        return
+    
     try:
         feeds, defaults = load_sources()
         if not feeds:
@@ -950,6 +1012,12 @@ def main():
                 log("error", "Feed processing error", feed=name, error=str(e))
 
         log("info", "Scraper completed", posted=total_posted, dryRun=DRY_RUN)
+        
+        # After scraping, validate a sample of existing grants
+        if not DRY_RUN:
+            log("info", "Running validation on existing grants...")
+            validate_existing_grants()
+        
     except Exception as e:
         log("error", "Fatal crash", error=str(e), tb=traceback.format_exc())
         sys.exit(1)

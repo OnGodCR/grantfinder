@@ -8,7 +8,7 @@ import {
   PreferencesPayload,
 } from "@/lib/me";
 import { UserProfile, getDefaultUserProfile } from "@/lib/matchScore";
-import { GraduationCap, DollarSign, Building, MapPin, Clock, Target, Award } from "lucide-react";
+import { GraduationCap, DollarSign, Building, MapPin, Clock, Target, Award, Bell } from "lucide-react";
 
 const DEPARTMENTS = ["Engineering", "Medicine", "Arts & Sciences", "Education", "Business", "Other"];
 const POSITIONS = ["Faculty", "Postdoc", "Research Staff", "Graduate Student", "Admin", "Other"];

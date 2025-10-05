@@ -86,6 +86,11 @@ model Grant {
   summary     String?
   embedding   Float[]  // array-based embedding
 
+  // Validation fields
+  isValid         Boolean? @default(true)
+  lastValidated   DateTime?
+  validationError String?
+
   agencyId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
