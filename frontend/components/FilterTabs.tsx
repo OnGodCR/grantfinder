@@ -1,7 +1,5 @@
 'use client';
 
-import * as React from 'react';
-
 interface FilterTabsProps {
   activeFilter: string;
   onFilterChange: (filter: string) => void;
@@ -21,22 +19,22 @@ export default function FilterTabs({ activeFilter, onFilterChange, filters: cust
   const displayFilters = customFilters || filters;
   
   return (
-    <div className="flex space-x-2 mb-0">
+    <div className="flex space-x-3 mb-0">
       {displayFilters.map((filter) => (
         <button
           key={filter.id}
           onClick={() => onFilterChange(filter.id)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                    activeFilter === filter.id
-                      ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/25'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
+          className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+            activeFilter === filter.id
+              ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/25'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/50 border border-slate-700/50'
+          }`}
         >
           {filter.label}
-          <span className={`ml-2 px-2 py-1 rounded-full text-xs font-bold ${
+          <span className={`ml-3 px-3 py-1 rounded-full text-xs font-bold ${
             activeFilter === filter.id
               ? 'bg-teal-700 text-white'
-              : 'bg-slate-200 text-slate-600'
+              : 'bg-slate-700/50 text-slate-300'
           }`}>
             {filter.count}
           </span>

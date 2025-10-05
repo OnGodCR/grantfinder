@@ -77,6 +77,32 @@ export default function DiscoverPage() {
     console.log('Bookmarking grant:', grantId);
   };
 
+  // Calculate filter counts based on actual grant data
+  const getFilterCounts = () => {
+    const allCount = grants.length;
+    const nsfCount = grants.filter(grant => grant.agency?.toLowerCase().includes('nsf')).length;
+    const nihCount = grants.filter(grant => grant.agency?.toLowerCase().includes('nih')).length;
+    const foundationsCount = grants.filter(grant => 
+      !grant.agency?.toLowerCase().includes('nsf') && 
+      !grant.agency?.toLowerCase().includes('nih')
+    ).length;
+    const deadlineSoonCount = grants.filter(grant => {
+      if (!grant.deadline) return false;
+      const daysUntilDeadline = Math.ceil((new Date(grant.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntilDeadline <= 14;
+    }).length;
+    const highMatchCount = grants.filter(grant => (grant.matchScore || 0) >= 80).length;
+
+    return [
+      { id: 'all', label: 'All Grants', count: allCount },
+      { id: 'nsf', label: 'NSF', count: nsfCount },
+      { id: 'nih', label: 'NIH', count: nihCount },
+      { id: 'foundations', label: 'Foundations', count: foundationsCount },
+      { id: 'deadline-soon', label: 'Deadline Soon', count: deadlineSoonCount },
+      { id: 'high-match', label: 'High Match', count: highMatchCount },
+    ];
+  };
+
   const filteredGrants = grants.filter(grant => {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'nsf') return grant.agency?.toLowerCase().includes('nsf');
@@ -109,10 +135,14 @@ export default function DiscoverPage() {
         <div className="flex">
           {/* Main Content */}
           <div className="flex-1 bg-slate-900">
-            <div className="w-full p-4">
-              <h1 className="text-2xl font-bold text-white mb-4">Discover Grants</h1>
+            <div className="w-full p-6">
+              <h1 className="text-3xl font-bold text-white mb-6">Discover Grants</h1>
               
-              <FilterTabs activeFilter={activeFilter} onFilterChange={handleFilterChange} />
+              <FilterTabs 
+                activeFilter={activeFilter} 
+                onFilterChange={handleFilterChange}
+                filters={getFilterCounts()}
+              />
               
               {loading && (
                 <div className="flex items-center justify-center py-8">
@@ -135,14 +165,16 @@ export default function DiscoverPage() {
               )}
               
               {!loading && !error && filteredGrants.length > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
-                  {filteredGrants.map((grant) => (
-                    <ModernGrantCard
-                      key={grant.id}
-                      grant={grant}
-                      onBookmark={handleBookmark}
-                    />
-                  ))}
+                <div className="mt-8">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
+                    {filteredGrants.map((grant) => (
+                      <ModernGrantCard
+                        key={grant.id}
+                        grant={grant}
+                        onBookmark={handleBookmark}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

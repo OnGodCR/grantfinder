@@ -75,6 +75,32 @@ export default function DashboardPage() {
     console.log('Bookmarking grant:', grantId);
   };
 
+  // Calculate filter counts based on actual grant data
+  const getFilterCounts = () => {
+    const allCount = grants.length;
+    const nsfCount = grants.filter(grant => grant.agency?.toLowerCase().includes('nsf')).length;
+    const nihCount = grants.filter(grant => grant.agency?.toLowerCase().includes('nih')).length;
+    const foundationsCount = grants.filter(grant => 
+      !grant.agency?.toLowerCase().includes('nsf') && 
+      !grant.agency?.toLowerCase().includes('nih')
+    ).length;
+    const deadlineSoonCount = grants.filter(grant => {
+      if (!grant.deadline) return false;
+      const daysUntilDeadline = Math.ceil((new Date(grant.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntilDeadline <= 14;
+    }).length;
+    const highMatchCount = grants.filter(grant => (grant.matchScore || 0) >= 80).length;
+
+    return [
+      { id: 'all', label: 'All Grants', count: allCount },
+      { id: 'nsf', label: 'NSF', count: nsfCount },
+      { id: 'nih', label: 'NIH', count: nihCount },
+      { id: 'foundations', label: 'Foundations', count: foundationsCount },
+      { id: 'deadline-soon', label: 'Deadline Soon', count: deadlineSoonCount },
+      { id: 'high-match', label: 'High Match', count: highMatchCount },
+    ];
+  };
+
   const filteredGrants = grants.filter(grant => {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'nsf') return grant.agency?.toLowerCase().includes('nsf');
@@ -105,7 +131,11 @@ export default function DashboardPage() {
                 <p className="text-slate-400 text-lg">Find the perfect funding opportunities for your research</p>
               </div>
               
-              <FilterTabs activeFilter={activeFilter} onFilterChange={handleFilterChange} />
+              <FilterTabs 
+                activeFilter={activeFilter} 
+                onFilterChange={handleFilterChange}
+                filters={getFilterCounts()}
+              />
               
               {loading && (
                 <div className="flex items-center justify-center py-16">
@@ -128,14 +158,16 @@ export default function DashboardPage() {
               )}
               
               {!loading && !error && filteredGrants.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredGrants.map((grant) => (
-                    <ModernGrantCard
-                      key={grant.id}
-                      grant={grant}
-                      onBookmark={handleBookmark}
-                    />
-                  ))}
+                <div className="mt-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {filteredGrants.map((grant) => (
+                      <ModernGrantCard
+                        key={grant.id}
+                        grant={grant}
+                        onBookmark={handleBookmark}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
