@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import * as React from 'react';
 
 interface FilterTabsProps {
   activeFilter: string;
@@ -21,7 +21,7 @@ export default function FilterTabs({ activeFilter, onFilterChange, filters: cust
   const displayFilters = customFilters || filters;
   
   return (
-    <div className="flex space-x-2 mb-3">
+    <div className="flex space-x-2 mb-1">
       {displayFilters.map((filter) => (
         <button
           key={filter.id}
