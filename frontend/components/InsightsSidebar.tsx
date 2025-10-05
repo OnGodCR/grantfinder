@@ -41,24 +41,24 @@ export default function InsightsSidebar({
   const keywords = trendingKeywords.length > 0 ? trendingKeywords : defaultKeywords;
 
   return (
-    <div className="w-80 bg-slate-900 border-l border-slate-800/50 p-6 space-y-8">
+    <div className="w-72 bg-slate-900 p-4 space-y-6">
       {/* Recommended for You */}
       <div>
-        <div className="flex items-center mb-6">
-          <TrendingUp className="w-6 h-6 text-teal-400 mr-3" />
-          <h3 className="text-xl font-bold text-white">Recommended for You</h3>
+        <div className="flex items-center mb-4">
+          <TrendingUp className="w-5 h-5 text-teal-400 mr-2" />
+          <h3 className="text-lg font-bold text-white">Recommended for You</h3>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
           {recommended.map((grant) => (
             <div
               key={grant.id}
-              className="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 transition-all duration-200 cursor-pointer hover:scale-105 border border-slate-700/30"
+              className="p-3 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-all duration-200 cursor-pointer border border-slate-700/30"
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-white overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
                   {grant.title}
                 </span>
-                <span className="text-xs font-bold text-teal-400 ml-3 flex-shrink-0 px-2 py-1 bg-teal-400/10 rounded-full">
+                <span className="text-xs font-bold text-teal-400 ml-2 flex-shrink-0 px-2 py-1 bg-teal-400/10 rounded-full">
                   {grant.score}%
                 </span>
               </div>
@@ -69,22 +69,22 @@ export default function InsightsSidebar({
 
       {/* Deadline Tracker */}
       <div>
-        <div className="flex items-center mb-6">
-          <Calendar className="w-6 h-6 text-blue-400 mr-3" />
-          <h3 className="text-xl font-bold text-white">Deadline Tracker</h3>
+        <div className="flex items-center mb-4">
+          <Calendar className="w-5 h-5 text-blue-400 mr-2" />
+          <h3 className="text-lg font-bold text-white">Deadline Tracker</h3>
         </div>
-        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/30">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/30">
+          <div className="flex items-center justify-between mb-3">
             <span className="text-sm text-slate-300 font-medium">Upcoming Deadlines</span>
-            <span className="text-2xl font-bold text-white">{upcomingDeadlines}</span>
+            <span className="text-xl font-bold text-white">{upcomingDeadlines}</span>
           </div>
-          <div className="w-full bg-slate-700/50 rounded-full h-3">
+          <div className="w-full bg-slate-700/50 rounded-full h-2">
             <div
-              className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${Math.min((upcomingDeadlines / 10) * 100, 100)}%` }}
             ></div>
           </div>
-          <p className="text-sm text-slate-400 mt-3 font-medium">
+          <p className="text-sm text-slate-400 mt-2 font-medium">
             {upcomingDeadlines > 0
               ? `${upcomingDeadlines} grants due soon`
               : 'No urgent deadlines'
@@ -95,15 +95,15 @@ export default function InsightsSidebar({
 
       {/* Keyword Trends */}
       <div>
-        <div className="flex items-center mb-6">
-          <Tag className="w-6 h-6 text-purple-400 mr-3" />
-          <h3 className="text-xl font-bold text-white">Keyword Trends</h3>
+        <div className="flex items-center mb-4">
+          <Tag className="w-5 h-5 text-purple-400 mr-2" />
+          <h3 className="text-lg font-bold text-white">Keyword Trends</h3>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           {keywords.map((keyword, index) => (
             <button
               key={keyword}
-              className="px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-white text-sm font-medium rounded-xl transition-all duration-200 hover:scale-105 border border-slate-700/30"
+              className="px-3 py-1 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-white text-sm font-medium rounded-lg transition-all duration-200 border border-slate-700/30"
             >
               {keyword}
             </button>
@@ -113,28 +113,28 @@ export default function InsightsSidebar({
 
       {/* Quick Stats */}
       <div>
-        <div className="flex items-center mb-6">
-          <Award className="w-6 h-6 text-yellow-400 mr-3" />
-          <h3 className="text-xl font-bold text-white">Quick Stats</h3>
+        <div className="flex items-center mb-4">
+          <Award className="w-5 h-5 text-yellow-400 mr-2" />
+          <h3 className="text-lg font-bold text-white">Quick Stats</h3>
         </div>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/30">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/30">
             <div className="flex items-center">
-              <Clock className="w-5 h-5 text-slate-400 mr-3" />
+              <Clock className="w-4 h-4 text-slate-400 mr-2" />
               <span className="text-sm text-slate-300 font-medium">Grants Found</span>
             </div>
             <span className="text-lg font-bold text-white">247</span>
           </div>
-          <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/30">
+          <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/30">
             <div className="flex items-center">
-              <TrendingUp className="w-5 h-5 text-slate-400 mr-3" />
+              <TrendingUp className="w-4 h-4 text-slate-400 mr-2" />
               <span className="text-sm text-slate-300 font-medium">This Week</span>
             </div>
             <span className="text-lg font-bold text-white">+23</span>
           </div>
-          <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/30">
+          <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/30">
             <div className="flex items-center">
-              <Calendar className="w-5 h-5 text-slate-400 mr-3" />
+              <Calendar className="w-4 h-4 text-slate-400 mr-2" />
               <span className="text-sm text-slate-300 font-medium">Due Soon</span>
             </div>
             <span className="text-lg font-bold text-red-400">12</span>

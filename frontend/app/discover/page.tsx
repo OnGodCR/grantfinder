@@ -100,36 +100,36 @@ export default function DiscoverPage() {
       <div className="ml-56">
         <TopNavbar onSearch={handleSearch} />
         
-        <div className="flex">
+        <div className="flex gap-0">
           {/* Main Content */}
           <div className="flex-1 p-4 bg-slate-900">
-            <div className="max-w-7xl mx-auto">
-              <h1 className="text-3xl font-bold text-white mb-6">Discover Grants</h1>
+            <div className="w-full">
+              <h1 className="text-2xl font-bold text-white mb-4">Discover Grants</h1>
               
               <FilterTabs activeFilter={activeFilter} onFilterChange={handleFilterChange} />
               
               {loading && (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-500"></div>
                   <span className="ml-3 text-slate-300">Loading grants...</span>
                 </div>
               )}
               
               {error && (
-                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 mb-6">
+                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3 mb-4">
                   <p className="text-red-300">Error: {error}</p>
                 </div>
               )}
               
               {!loading && !error && filteredGrants.length === 0 && (
-                <div className="text-center py-12">
+                <div className="text-center py-8">
                   <p className="text-slate-300 text-lg">No grants found</p>
                   <p className="text-slate-400 mt-2">Try adjusting your search or filters</p>
                 </div>
               )}
               
               {!loading && !error && filteredGrants.length > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
                   {filteredGrants.map((grant) => (
                     <ModernGrantCard
                       key={grant.id}
@@ -143,7 +143,7 @@ export default function DiscoverPage() {
           </div>
           
           {/* Insights Sidebar */}
-          <InsightsSidebar 
+          <InsightsSidebar
             recommendedGrants={grants.slice(0, 4).map(g => ({ id: g.id, title: g.title, score: g.matchScore || 0 }))}
             upcomingDeadlines={grants.filter(g => {
               if (!g.deadline) return false;
