@@ -38,6 +38,8 @@ export default function TopNavbar({ onSearch }: TopNavbarProps) {
     try {
       await signOut();
       setShowProfileDropdown(false);
+      // Redirect to the main site after sign out
+      window.location.href = 'https://grantalytic.com';
     } catch (error) {
       console.error('Error signing out:', error);
     }

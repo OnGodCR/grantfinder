@@ -7,6 +7,8 @@ import {
   saveMyPreferences,
   PreferencesPayload,
 } from "@/lib/me";
+import { UserProfile, getDefaultUserProfile } from "@/lib/matchScore";
+import { GraduationCap, DollarSign, Building, MapPin, Clock, Target, Award } from "lucide-react";
 
 const DEPARTMENTS = ["Engineering", "Medicine", "Arts & Sciences", "Education", "Business", "Other"];
 const POSITIONS = ["Faculty", "Postdoc", "Research Staff", "Graduate Student", "Admin", "Other"];
@@ -17,10 +19,35 @@ const DURATIONS = ["Short (<1 year)", "Medium (1–3 years)", "Long (>3 years)"]
 const ALERTS = ["Real-time", "Daily digest", "Weekly digest"];
 const METHODS = ["Email", "In-app only", "Both"];
 
+// Enhanced options for research profile
+const RESEARCH_AREAS = [
+  "Artificial Intelligence", "Machine Learning", "Data Science", "Computer Science",
+  "Biology", "Chemistry", "Physics", "Mathematics", "Statistics",
+  "Medicine", "Public Health", "Psychology", "Neuroscience",
+  "Environmental Science", "Climate Science", "Sustainability",
+  "Engineering", "Materials Science", "Robotics", "Biotechnology",
+  "Social Sciences", "Economics", "Political Science", "Sociology",
+  "Arts", "Humanities", "Education", "Policy", "Other"
+];
+
+const EXPERIENCE_LEVELS = [
+  { value: "beginner", label: "Beginner (0-2 years)", description: "New to research or early career" },
+  { value: "intermediate", label: "Intermediate (2-5 years)", description: "Some research experience" },
+  { value: "advanced", label: "Advanced (5-10 years)", description: "Experienced researcher" },
+  { value: "expert", label: "Expert (10+ years)", description: "Senior researcher or PI" }
+];
+
+const GRANT_TYPES = [
+  "Research Grant", "Fellowship", "Scholarship", "Training Grant", 
+  "Equipment Grant", "Travel Grant", "Conference Grant", "Seed Funding"
+];
+
 export default function OnboardingPage() {
   const { user, isLoaded } = useUser();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 4;
 
   const [form, setForm] = useState<PreferencesPayload>({
     clerkId: "",
@@ -36,6 +63,8 @@ export default function OnboardingPage() {
     alertFrequency: "Weekly digest",
     notificationMethod: "Email",
   });
+
+  const [researchProfile, setResearchProfile] = useState<UserProfile>(getDefaultUserProfile());
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -79,7 +108,12 @@ export default function OnboardingPage() {
     }
     setSaving(true);
     try {
+      // Save both preferences and research profile
       await saveMyPreferences(form);
+      
+      // Save research profile to localStorage for match scoring
+      localStorage.setItem('userResearchProfile', JSON.stringify(researchProfile));
+      
       window.location.replace("/discover");
     } catch (e) {
       console.error(e);
@@ -89,227 +123,415 @@ export default function OnboardingPage() {
     }
   }
 
-  if (!isLoaded || loading) return <div className="p-6">Loading…</div>;
-  if (!user) return <div className="p-6">Please sign in.</div>;
+  function updateResearchProfile(updates: Partial<UserProfile>) {
+    setResearchProfile(prev => ({ ...prev, ...updates }));
+  }
+
+  function nextStep() {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
+  }
+
+  function prevStep() {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  }
+
+  if (!isLoaded || loading) return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400 mx-auto mb-4"></div>
+        <p className="text-slate-300 text-lg">Loading...</p>
+      </div>
+    </div>
+  );
+  
+  if (!user) return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="text-center">
+        <div className="text-slate-400 text-6xl mb-4">🔐</div>
+        <h1 className="text-2xl font-bold text-white mb-2">Please Sign In</h1>
+        <p className="text-slate-300">You need to be signed in to complete onboarding.</p>
+      </div>
+    </div>
+  );
 
   return (
-    <main className="max-w-3xl mx-auto p-6 space-y-8">
-      <header>
-        <h1 className="text-3xl font-semibold">Tell us about your work</h1>
-        <p className="text-white/60 mt-1">We’ll personalize grants based on your answers. Takes ~60 seconds.</p>
-      </header>
-
-      <form className="space-y-8" onSubmit={onSubmit}>
-        {/* Section 1 */}
-        <section className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-4">
-          <h2 className="text-xl font-medium">Basic Researcher Info</h2>
-
-          <label className="block">
-            <span className="text-sm text-white/70">Department / School</span>
-            <select
-              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
-              value={form.department || ""}
-              onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
-            >
-              <option value="">Select…</option>
-              {DEPARTMENTS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="text-sm text-white/70">Position / Role</span>
-            <select
-              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
-              value={form.position || ""}
-              onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
-            >
-              <option value="">Select…</option>
-              {POSITIONS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </label>
-        </section>
-
-        {/* Section 2 */}
-        <section className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-4">
-          <h2 className="text-xl font-medium">Research Focus</h2>
-
-          <label className="block">
-            <span className="text-sm text-white/70">Primary research areas (comma separated)</span>
-            <input
-              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
-              placeholder='e.g., "AI in Healthcare, Climate Modeling"'
-              value={(form.researchAreas || []).join(", ")}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  researchAreas: e.target.value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                }))
-              }
-            />
-          </label>
-
-          <div>
-            <span className="text-sm text-white/70">Select relevant keywords</span>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {["STEM", "Education", "Policy", "Health", "AI", "Climate"].map((k) => (
-                <button
-                  type="button"
-                  key={k}
-                  onClick={() => toggleArr("keywords", k)}
-                  className={`px-3 py-1 rounded-full text-sm border transition ${
-                    (form.keywords || []).includes(k)
-                      ? "bg-blue-500/20 text-blue-300 border-blue-400/40"
-                      : "bg-white/5 text-white/80 border-white/10"
-                  }`}
-                >
-                  {k}
-                </button>
-              ))}
-            </div>
+    <div className="min-h-screen bg-slate-900">
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-white mb-4">Welcome to Grantalytic!</h1>
+          <p className="text-slate-300 text-lg mb-8">Let's set up your research profile to find the perfect grants for you.</p>
+          
+          {/* Progress Bar */}
+          <div className="w-full bg-slate-700/50 rounded-full h-2 mb-8">
+            <div 
+              className="bg-gradient-to-r from-teal-500 to-blue-500 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+            ></div>
           </div>
-
-          <div>
-            <span className="text-sm text-white/70">Funding categories</span>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {FUNDING_CATEGORIES.map((k) => (
-                <button
-                  type="button"
-                  key={k}
-                  onClick={() => toggleArr("fundingCategories", k)}
-                  className={`px-3 py-1 rounded-full text-sm border transition ${
-                    (form.fundingCategories || []).includes(k)
-                      ? "bg-blue-500/20 text-blue-300 border-blue-400/40"
-                      : "bg-white/5 text-white/80 border-white/10"
-                  }`}
-                >
-                  {k}
-                </button>
-              ))}
-            </div>
+          
+          <div className="flex justify-center space-x-4">
+            {Array.from({ length: totalSteps }, (_, i) => (
+              <div
+                key={i}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  i + 1 <= currentStep
+                    ? 'bg-teal-500 text-white'
+                    : 'bg-slate-700 text-slate-400'
+                }`}
+              >
+                {i + 1}
+              </div>
+            ))}
           </div>
-        </section>
+        </div>
 
-        {/* Section 3 */}
-        <section className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-4">
-          <h2 className="text-xl font-medium">Preferences & Constraints</h2>
+        <form onSubmit={onSubmit}>
+          {/* Step 1: Basic Info */}
+          {currentStep === 1 && (
+            <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700/50">
+              <div className="flex items-center gap-3 mb-6">
+                <GraduationCap className="w-8 h-8 text-teal-400" />
+                <h2 className="text-2xl font-bold text-white">Basic Information</h2>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    Department / School
+                  </label>
+                  <select
+                    className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    value={form.department || ""}
+                    onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
+                  >
+                    <option value="">Select your department...</option>
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
 
-          <div>
-            <span className="text-sm text-white/70">Preferred funding sources</span>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {SOURCES.map((k) => (
-                <label
-                  key={k}
-                  className="flex items-center gap-2 rounded-md px-3 py-1 bg-white/5 border border-white/10"
-                >
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    Position / Role
+                  </label>
+                  <select
+                    className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    value={form.position || ""}
+                    onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
+                  >
+                    <option value="">Select your position...</option>
+                    {POSITIONS.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    Research Experience Level
+                  </label>
+                  <div className="space-y-3">
+                    {EXPERIENCE_LEVELS.map((level) => (
+                      <label key={level.value} className="flex items-start gap-3 p-4 bg-slate-700/30 rounded-xl cursor-pointer hover:bg-slate-700/50 transition-colors">
+                        <input
+                          type="radio"
+                          name="experienceLevel"
+                          value={level.value}
+                          checked={researchProfile.experienceLevel === level.value}
+                          onChange={(e) => updateResearchProfile({ experienceLevel: e.target.value as any })}
+                          className="mt-1"
+                        />
+                        <div>
+                          <div className="text-white font-medium">{level.label}</div>
+                          <div className="text-slate-400 text-sm">{level.description}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Research Interests */}
+          {currentStep === 2 && (
+            <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700/50">
+              <div className="flex items-center gap-3 mb-6">
+                <Target className="w-8 h-8 text-teal-400" />
+                <h2 className="text-2xl font-bold text-white">Research Interests</h2>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    Primary Research Areas
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {RESEARCH_AREAS.map((area) => (
+                      <button
+                        type="button"
+                        key={area}
+                        onClick={() => {
+                          const current = researchProfile.researchInterests;
+                          const updated = current.includes(area)
+                            ? current.filter(a => a !== area)
+                            : [...current, area];
+                          updateResearchProfile({ researchInterests: updated });
+                        }}
+                        className={`px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          researchProfile.researchInterests.includes(area)
+                            ? "bg-teal-500/20 text-teal-300 border border-teal-500/30"
+                            : "bg-slate-700/30 text-slate-300 border border-slate-600/30 hover:bg-slate-700/50"
+                        }`}
+                      >
+                        {area}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    Custom Research Areas
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={(form.preferredSources || []).includes(k)}
-                    onChange={() => toggleArr("preferredSources", k)}
+                    className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    placeholder="Enter additional research areas (comma separated)"
+                    value={(form.researchAreas || []).join(", ")}
+                    onChange={(e) => {
+                      const areas = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+                      setForm((f) => ({ ...f, researchAreas: areas }));
+                      updateResearchProfile({ researchInterests: [...researchProfile.researchInterests, ...areas] });
+                    }}
                   />
-                  <span>{k}</span>
-                </label>
-              ))}
+                </div>
+              </div>
             </div>
+          )}
+
+          {/* Step 3: Funding Preferences */}
+          {currentStep === 3 && (
+            <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700/50">
+              <div className="flex items-center gap-3 mb-6">
+                <DollarSign className="w-8 h-8 text-teal-400" />
+                <h2 className="text-2xl font-bold text-white">Funding Preferences</h2>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    Funding Range (USD)
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-400 text-xs mb-1">Minimum</label>
+                      <input
+                        type="number"
+                        value={researchProfile.fundingRange.min}
+                        onChange={(e) => updateResearchProfile({
+                          fundingRange: {
+                            ...researchProfile.fundingRange,
+                            min: parseInt(e.target.value) || 0
+                          }
+                        })}
+                        className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                        placeholder="50000"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 text-xs mb-1">Maximum</label>
+                      <input
+                        type="number"
+                        value={researchProfile.fundingRange.max}
+                        onChange={(e) => updateResearchProfile({
+                          fundingRange: {
+                            ...researchProfile.fundingRange,
+                            max: parseInt(e.target.value) || 1000000
+                          }
+                        })}
+                        className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                        placeholder="500000"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    Preferred Funding Sources
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {SOURCES.map((source) => (
+                      <label key={source} className="flex items-center gap-3 p-4 bg-slate-700/30 rounded-xl cursor-pointer hover:bg-slate-700/50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={researchProfile.preferredAgencies.includes(source)}
+                          onChange={(e) => {
+                            const current = researchProfile.preferredAgencies;
+                            const updated = e.target.checked
+                              ? [...current, source]
+                              : current.filter(s => s !== source);
+                            updateResearchProfile({ preferredAgencies: updated });
+                          }}
+                        />
+                        <span className="text-slate-300">{source}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    Preferred Grant Types
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {GRANT_TYPES.map((type) => (
+                      <button
+                        type="button"
+                        key={type}
+                        onClick={() => {
+                          const current = researchProfile.preferredGrantTypes;
+                          const updated = current.includes(type)
+                            ? current.filter(t => t !== type)
+                            : [...current, type];
+                          updateResearchProfile({ preferredGrantTypes: updated });
+                        }}
+                        className={`px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          researchProfile.preferredGrantTypes.includes(type)
+                            ? "bg-teal-500/20 text-teal-300 border border-teal-500/30"
+                            : "bg-slate-700/30 text-slate-300 border border-slate-600/30 hover:bg-slate-700/50"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Notifications & Final Setup */}
+          {currentStep === 4 && (
+            <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700/50">
+              <div className="flex items-center gap-3 mb-6">
+                <Bell className="w-8 h-8 text-teal-400" />
+                <h2 className="text-2xl font-bold text-white">Notifications & Preferences</h2>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    How often do you want updates?
+                  </label>
+                  <select
+                    className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    value={form.alertFrequency || ""}
+                    onChange={(e) => setForm((f) => ({ ...f, alertFrequency: e.target.value }))}
+                  >
+                    <option value="">Select frequency...</option>
+                    {ALERTS.map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    Preferred notification method
+                  </label>
+                  <select
+                    className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    value={form.notificationMethod || ""}
+                    onChange={(e) => setForm((f) => ({ ...f, notificationMethod: e.target.value }))}
+                  >
+                    <option value="">Select method...</option>
+                    {METHODS.map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-3">
+                    Deadline Buffer (days)
+                  </label>
+                  <input
+                    type="number"
+                    value={researchProfile.deadlineBuffer}
+                    onChange={(e) => updateResearchProfile({ deadlineBuffer: parseInt(e.target.value) || 30 })}
+                    className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    placeholder="30"
+                  />
+                  <p className="text-slate-400 text-sm mt-1">How many days before deadline should we remind you?</p>
+                </div>
+
+                <div className="bg-teal-500/10 border border-teal-500/30 rounded-xl p-6">
+                  <h3 className="text-lg font-bold text-white mb-2">Profile Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-slate-400">Research Areas:</span>
+                      <span className="text-white ml-2">{researchProfile.researchInterests.length} selected</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Funding Range:</span>
+                      <span className="text-white ml-2">${researchProfile.fundingRange.min.toLocaleString()} - ${researchProfile.fundingRange.max.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Experience Level:</span>
+                      <span className="text-white ml-2 capitalize">{researchProfile.experienceLevel}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Preferred Agencies:</span>
+                      <span className="text-white ml-2">{researchProfile.preferredAgencies.length} selected</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-8">
+            <button
+              type="button"
+              onClick={prevStep}
+              disabled={currentStep === 1}
+              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                currentStep === 1
+                  ? 'bg-slate-700/30 text-slate-500 cursor-not-allowed'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              Previous
+            </button>
+
+            {currentStep < totalSteps ? (
+              <button
+                type="button"
+                onClick={nextStep}
+                className="px-8 py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-bold rounded-xl hover:from-teal-600 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                Next Step
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-8 py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-bold rounded-xl hover:from-teal-600 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Complete Setup"}
+              </button>
+            )}
           </div>
-
-          <label className="block">
-            <span className="text-sm text-white/70">Funding level of interest</span>
-            <select
-              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
-              value={form.fundingLevel || ""}
-              onChange={(e) => setForm((f) => ({ ...f, fundingLevel: e.target.value }))}
-            >
-              <option value="">Select…</option>
-              {LEVELS.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="text-sm text-white/70">Typical project duration</span>
-            <select
-              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
-              value={form.projectDuration || ""}
-              onChange={(e) => setForm((f) => ({ ...f, projectDuration: e.target.value }))}
-            >
-              <option value="">Select…</option>
-              {DURATIONS.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={!!form.deadlineFirst}
-              onChange={(e) => setForm((f) => ({ ...f, deadlineFirst: e.target.checked }))}
-            />
-            <span className="text-sm text-white/80">See near-term deadlines first</span>
-          </label>
-        </section>
-
-        {/* Section 4 */}
-        <section className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-4">
-          <h2 className="text-xl font-medium">Alerts & Notifications</h2>
-
-          <label className="block">
-            <span className="text-sm text-white/70">How often do you want updates?</span>
-            <select
-              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
-              value={form.alertFrequency || ""}
-              onChange={(e) => setForm((f) => ({ ...f, alertFrequency: e.target.value }))}
-            >
-              <option value="">Select…</option>
-              {ALERTS.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="text-sm text-white/70">Preferred notification method</span>
-            <select
-              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 p-2"
-              value={form.notificationMethod || ""}
-              onChange={(e) => setForm((f) => ({ ...f, notificationMethod: e.target.value }))}
-            >
-              <option value="">Select…</option>
-              {METHODS.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-        </section>
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white"
-        >
-          {saving ? "Saving…" : "Save & Continue"}
-        </button>
-      </form>
-    </main>
+        </form>
+      </div>
+    </div>
   );
 }
