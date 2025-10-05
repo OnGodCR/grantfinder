@@ -7,6 +7,7 @@ import TopNavbar from '@/components/TopNavbar';
 import { User, Mail, Calendar, Award, Bookmark, TrendingUp, Settings, Bell, Shield, HelpCircle } from 'lucide-react';
 import UserProfileManager from '@/components/UserProfileManager';
 import { UserProfile, getDefaultUserProfile } from '@/lib/matchScore';
+import { getMyPreferences } from '@/lib/me';
 
 export default function ProfilePage() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -14,11 +15,11 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [researcherProfile, setResearcherProfile] = useState<UserProfile>(getDefaultUserProfile());
   const [profileData, setProfileData] = useState({
-    totalGrants: 247,
-    bookmarkedGrants: 23,
-    applicationsSubmitted: 8,
-    successfulApplications: 3,
-    researchInterests: ['Machine Learning', 'AI Research', 'Data Science', 'Computer Vision'],
+    totalGrants: 0,
+    bookmarkedGrants: 0,
+    applicationsSubmitted: 0,
+    successfulApplications: 0,
+    researchInterests: [] as string[],
     notifications: {
       email: true,
       deadlineReminders: true,
@@ -31,6 +32,7 @@ export default function ProfilePage() {
       matchThreshold: 70,
     }
   });
+  const [loading, setLoading] = useState(true);
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: User },
@@ -41,10 +43,10 @@ export default function ProfilePage() {
   ];
 
   const stats = [
-    { label: 'Total Grants Found', value: profileData.totalGrants, icon: TrendingUp, color: 'text-blue-400' },
-    { label: 'Bookmarked Grants', value: profileData.bookmarkedGrants, icon: Bookmark, color: 'text-teal-400' },
-    { label: 'Applications Submitted', value: profileData.applicationsSubmitted, icon: Award, color: 'text-green-400' },
-    { label: 'Successful Applications', value: profileData.successfulApplications, icon: Award, color: 'text-yellow-400' },
+    { label: 'Total Grants Found', value: loading ? '...' : profileData.totalGrants, icon: TrendingUp, color: 'text-blue-400' },
+    { label: 'Bookmarked Grants', value: loading ? '...' : profileData.bookmarkedGrants, icon: Bookmark, color: 'text-teal-400' },
+    { label: 'Applications Submitted', value: loading ? '...' : profileData.applicationsSubmitted, icon: Award, color: 'text-green-400' },
+    { label: 'Successful Applications', value: loading ? '...' : profileData.successfulApplications, icon: Award, color: 'text-yellow-400' },
   ];
 
   const handleNotificationToggle = (key: string) => {
@@ -67,12 +69,68 @@ export default function ProfilePage() {
     }));
   };
 
+  // Fetch real profile data
+  const fetchProfileData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch user preferences
+      const prefs = await getMyPreferences();
+      if (prefs) {
+        setProfileData(prev => ({
+          ...prev,
+          researchInterests: prefs.researchInterests || [],
+          preferences: {
+            fundingRange: prefs.fundingRange || { min: 50000, max: 500000 },
+            deadlineBuffer: prefs.deadlineBuffer || 30,
+            matchThreshold: prefs.matchThreshold || 70,
+          }
+        }));
+      }
+
+      // Fetch grants data
+      const grantsResponse = await fetch('/api/grants?limit=1000');
+      if (grantsResponse.ok) {
+        const grantsData = await grantsResponse.json();
+        setProfileData(prev => ({
+          ...prev,
+          totalGrants: grantsData.count || 0
+        }));
+      }
+
+      // Fetch bookmarks data (if you have a bookmarks API)
+      try {
+        const bookmarksResponse = await fetch('/api/bookmarks');
+        if (bookmarksResponse.ok) {
+          const bookmarksData = await bookmarksResponse.json();
+          setProfileData(prev => ({
+            ...prev,
+            bookmarkedGrants: bookmarksData.length || 0
+          }));
+        }
+      } catch (error) {
+        console.log('Bookmarks API not available yet');
+      }
+
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+      } finally {
+        setLoading(false);
+      }
+  };
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      fetchProfileData();
+    }
+  }, [isLoaded, isSignedIn]);
+
   return (
     <div className="min-h-screen bg-slate-900">
       <DashboardSidebar />
       
       <div className="ml-56">
-        <TopNavbar onSearch={() => {}} />
+        <TopNavbar onSearch={() => {}} showSearch={false} />
         
         <div className="p-6 bg-slate-900">
           <div className="max-w-4xl mx-auto">
@@ -285,7 +343,7 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     </div>
-                  </div>
+        </div>
                 )}
 
                 {activeTab === 'notifications' && (
@@ -323,8 +381,8 @@ export default function ProfilePage() {
                         ))}
                       </div>
                     </div>
-                  </div>
-                )}
+        </div>
+      )}
 
                 {activeTab === 'security' && (
                   <div className="space-y-8">

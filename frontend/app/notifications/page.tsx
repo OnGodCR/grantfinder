@@ -160,7 +160,7 @@ export default function NotificationsPage() {
       <DashboardSidebar />
       
       <div className="ml-56">
-        <TopNavbar onSearch={() => {}} />
+        <TopNavbar onSearch={() => {}} showSearch={false} />
         
         <div className="p-6 bg-slate-900">
           <div className="max-w-4xl mx-auto">
@@ -310,7 +310,7 @@ export default function NotificationsPage() {
                             <span className="capitalize">{notification.priority} priority</span>
                           </div>
                         </div>
-                      </div>
+        </div>
                       
                       <div className="flex items-center space-x-2 ml-4">
                         {!notification.read && (

@@ -110,7 +110,7 @@ export default function BookmarksPage() {
       <DashboardSidebar />
       
       <div className="ml-56">
-        <TopNavbar onSearch={handleSearch} />
+        <TopNavbar onSearch={handleSearch} showSearch={false} />
         
         <div className="flex">
           {/* Main Content */}
