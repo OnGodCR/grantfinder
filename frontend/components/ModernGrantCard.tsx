@@ -80,16 +80,16 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
 
   return (
     <div
-      className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-700/50 hover:border-teal-400/50 hover:-translate-y-1 group"
+      className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 hover:border-teal-300 hover:-translate-y-1 group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-white mb-2 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
             {grant.title}
           </h3>
-          <p className="text-sm text-slate-300 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'}}>
+          <p className="text-sm text-gray-600 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'}}>
             {grant.summary || grant.description}
           </p>
         </div>
@@ -116,42 +116,42 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-sm font-bold text-white">{matchScore}%</span>
+              <span className="text-sm font-bold text-gray-800">{matchScore}%</span>
             </div>
           </div>
-          <p className="text-xs text-slate-400 text-center mt-2 font-medium">Match Score</p>
+          <p className="text-xs text-gray-500 text-center mt-2 font-medium">Match Score</p>
         </div>
       </div>
 
       {/* Grant Details */}
       <div className="space-y-4 mb-6">
         {grant.agency && (
-          <div className="flex items-center text-sm text-slate-300">
-            <Building className="w-4 h-4 mr-3 text-slate-400" />
+          <div className="flex items-center text-sm text-gray-600">
+            <Building className="w-4 h-4 mr-3 text-gray-400" />
             <span className="font-medium">{grant.agency}</span>
           </div>
         )}
         
         {(grant.fundingMin || grant.fundingMax) && (
-          <div className="flex items-center text-sm text-slate-300">
-            <DollarSign className="w-4 h-4 mr-3 text-slate-400" />
+          <div className="flex items-center text-sm text-gray-600">
+            <DollarSign className="w-4 h-4 mr-3 text-gray-400" />
             <span className="font-medium">{formatFunding(grant.fundingMin, grant.fundingMax, grant.currency)}</span>
           </div>
         )}
         
         {grant.deadline && (
           <div className="flex items-center text-sm">
-            <Calendar className="w-4 h-4 mr-3 text-slate-400" />
-            <span className="text-slate-300 font-medium">Deadline:</span>
+            <Calendar className="w-4 h-4 mr-3 text-gray-400" />
+            <span className="text-gray-600 font-medium">Deadline:</span>
             <span className={`ml-2 font-semibold ${getUrgencyColor(daysUntilDeadline!)}`}>
               {new Date(grant.deadline).toLocaleDateString()}
             </span>
             {daysUntilDeadline && (
               <span className={`ml-3 text-xs px-3 py-1 rounded-full font-semibold ${
-                daysUntilDeadline <= 7 ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
-                daysUntilDeadline <= 14 ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' :
-                daysUntilDeadline <= 30 ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
-                'bg-green-500/20 text-green-300 border border-green-500/30'
+                daysUntilDeadline <= 7 ? 'bg-red-100 text-red-700 border border-red-200' :
+                daysUntilDeadline <= 14 ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                daysUntilDeadline <= 30 ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
+                'bg-green-100 text-green-700 border border-green-200'
               }`}>
                 {daysUntilDeadline} days left
               </span>
@@ -161,14 +161,14 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-between pt-5 border-t border-slate-700/50">
+      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
         <div className="flex items-center space-x-2">
           <button
             onClick={handleBookmarkToggle}
-            className={`p-3 rounded-xl transition-all duration-200 ${
+            className={`p-2 rounded-lg transition-all duration-200 ${
               bookmarked
-                ? 'bg-teal-500/20 text-teal-400 shadow-sm border border-teal-500/30'
-                : 'text-slate-400 hover:text-teal-400 hover:bg-teal-500/10'
+                ? 'bg-teal-100 text-teal-600 shadow-sm border border-teal-200'
+                : 'text-gray-400 hover:text-teal-600 hover:bg-teal-50'
             }`}
           >
             <Bookmark className={`w-4 h-4 ${bookmarked ? 'fill-current' : ''}`} />
@@ -179,7 +179,7 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
               href={grant.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-3 text-slate-400 hover:text-teal-400 hover:bg-teal-500/10 rounded-xl transition-all duration-200"
+              className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all duration-200"
             >
               <ExternalLink className="w-4 h-4" />
             </a>
@@ -188,7 +188,7 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
         
         <Link
           href={`/grants/${grant.id}`}
-          className="px-5 py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white text-sm font-semibold rounded-xl hover:from-teal-700 hover:to-teal-800 transition-all duration-200 shadow-lg hover:shadow-xl inline-block text-center"
+          className="px-4 py-2 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-all duration-200 shadow-sm hover:shadow-md inline-block text-center"
         >
           View Details
         </Link>

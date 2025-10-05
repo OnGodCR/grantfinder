@@ -26,17 +26,17 @@ export default function FilterTabs({ activeFilter, onFilterChange, filters: cust
         <button
           key={filter.id}
           onClick={() => onFilterChange(filter.id)}
-          className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
-            activeFilter === filter.id
-              ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/25 scale-105'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 hover:scale-105'
-          }`}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    activeFilter === filter.id
+                      ? 'bg-teal-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
         >
           {filter.label}
-          <span className={`ml-3 px-2.5 py-1 rounded-full text-xs font-bold ${
+          <span className={`ml-2 px-2 py-1 rounded-full text-xs font-bold ${
             activeFilter === filter.id
               ? 'bg-teal-700 text-white'
-              : 'bg-slate-200 text-slate-600'
+              : 'bg-gray-200 text-gray-600'
           }`}>
             {filter.count}
           </span>
