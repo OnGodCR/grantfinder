@@ -114,8 +114,8 @@ export default function BookmarksPage() {
         
         <div className="flex">
           {/* Main Content */}
-          <div className="flex-1 p-6 bg-slate-900">
-            <div className="max-w-4xl mx-auto">
+          <div className="flex-1 bg-slate-900">
+            <div className="w-full p-4">
               <div className="mb-8">
                 <div className="flex items-center mb-4">
                   <Bookmark className="w-8 h-8 text-teal-400 mr-3" />
@@ -252,7 +252,7 @@ export default function BookmarksPage() {
                 </div>
               )}
             </div>
-          </div>
+        </div>
           
           {/* Insights Sidebar */}
           <InsightsSidebar 

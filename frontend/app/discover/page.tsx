@@ -106,11 +106,11 @@ export default function DiscoverPage() {
       <div className="ml-56">
         <TopNavbar onSearch={handleSearch} />
         
-        <div className="flex gap-0">
+        <div className="flex">
           {/* Main Content */}
-          <div className="flex-1 p-2 bg-slate-900">
-            <div className="w-full">
-              <h1 className="text-2xl font-bold text-white mb-0">Discover Grants</h1>
+          <div className="flex-1 bg-slate-900">
+            <div className="w-full p-4">
+              <h1 className="text-2xl font-bold text-white mb-4">Discover Grants</h1>
               
               <FilterTabs activeFilter={activeFilter} onFilterChange={handleFilterChange} />
               
