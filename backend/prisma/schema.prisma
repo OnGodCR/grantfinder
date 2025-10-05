@@ -83,13 +83,17 @@ model Grant {
   fundingMax  Float?
   deadline    DateTime?
   eligibility String?
-  summary     String?
+  summary     String?  // AI-generated summary
   embedding   Float[]  // array-based embedding
 
   // Validation fields
   isValid         Boolean? @default(true)
   lastValidated   DateTime?
   validationError String?
+
+  // AI-generated content
+  aiTitle    String?  // AI-generated title
+  aiSummary  String?  // AI-generated summary (alternative to summary)
 
   agencyId    String?
   createdAt   DateTime @default(now())

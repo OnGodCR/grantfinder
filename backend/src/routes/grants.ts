@@ -193,6 +193,9 @@ router.post("/internal/grants", requireInternalToken, async (req: Request, res: 
         fundingMax: data.fundingMax,
         currency: data.currency,
         eligibility: data.eligibility,
+        summary: data.summary,
+        aiTitle: data.aiTitle,
+        aiSummary: data.aiSummary,
         updatedAt: new Date(),
       },
       create: {
@@ -206,6 +209,9 @@ router.post("/internal/grants", requireInternalToken, async (req: Request, res: 
         fundingMax: data.fundingMax,
         currency: data.currency,
         eligibility: data.eligibility,
+        summary: data.summary,
+        aiTitle: data.aiTitle,
+        aiSummary: data.aiSummary,
       },
     });
 

@@ -11,6 +11,8 @@ interface Grant {
   title: string;
   description: string;
   summary?: string;
+  aiTitle?: string;
+  aiSummary?: string;
   deadline?: string;
   fundingMin?: number;
   fundingMax?: number;
@@ -89,11 +91,11 @@ export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propI
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-8">
           <div className="flex-1 pr-6">
-            <h3 className="text-2xl font-bold text-white mb-4 overflow-hidden leading-tight" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'}}>
-              {grant.title}
+            <h3 className="text-3xl font-bold text-white mb-6 overflow-hidden leading-tight" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
+              {grant.aiTitle || grant.title}
             </h3>
-            <p className="text-lg text-slate-300 overflow-hidden leading-relaxed" style={{display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical'}}>
-              {grant.summary || grant.description}
+            <p className="text-xl text-slate-300 overflow-hidden leading-relaxed" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'}}>
+              {grant.aiSummary || grant.summary || grant.description}
             </p>
           </div>
         

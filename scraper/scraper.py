@@ -26,6 +26,7 @@ import feedfinder2
 
 from requests.adapters import HTTPAdapter, Retry
 from tenacity import RetryError
+import openai
 
 # ----------------- ENV / CONFIG -----------------
 def _dequote(s: str | None) -> str:
@@ -34,6 +35,11 @@ def _dequote(s: str | None) -> str:
     if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
         s = s[1:-1].strip()
     return s
+
+# OpenAI configuration
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if OPENAI_API_KEY:
+    openai.api_key = OPENAI_API_KEY
 
 # ----------------- FILTERS / LIMITS -----------------
 # Keywords used to keep only grant-like items from RSS/HTML.
@@ -474,22 +480,148 @@ def download_and_readable(url: str) -> Optional[lxml_html.HtmlElement]:
 
 # ----------------- POST TO BACKEND -----------------
 
+def extract_funding_page_url(original_url: str, page_content: str) -> str:
+    """Extract the actual funding/application page URL from grant content"""
+    try:
+        # Look for common funding page patterns
+        funding_patterns = [
+            r'href=["\']([^"\']*(?:apply|application|funding|grant|opportunity|solicitation|rfp|rfa)[^"\']*)["\']',
+            r'href=["\']([^"\']*(?:/apply|/application|/funding|/grant|/opportunity|/solicitation|/rfp|/rfa)[^"\']*)["\']',
+            r'<a[^>]*href=["\']([^"\']*(?:apply|application|funding|grant|opportunity)[^"\']*)["\'][^>]*>',
+        ]
+        
+        for pattern in funding_patterns:
+            matches = re.findall(pattern, page_content, re.IGNORECASE)
+            for match in matches:
+                # Convert relative URLs to absolute
+                if match.startswith('/'):
+                    parsed_url = urlparse(original_url)
+                    funding_url = f"{parsed_url.scheme}://{parsed_url.netloc}{match}"
+                elif match.startswith('http'):
+                    funding_url = match
+                else:
+                    funding_url = urljoin(original_url, match)
+                
+                # Validate the URL looks like a funding page
+                if any(keyword in funding_url.lower() for keyword in ['apply', 'application', 'funding', 'grant', 'opportunity', 'solicitation', 'rfp', 'rfa']):
+                    return funding_url
+        
+        # If no specific funding page found, return original URL
+        return original_url
+        
+    except Exception as e:
+        log("warn", "Failed to extract funding page URL", error=str(e), url=original_url)
+        return original_url
+
+def generate_ai_summary(title: str, description: str, eligibility: str, funding_min: Optional[float], funding_max: Optional[float], currency: str) -> str:
+    """Generate AI summary using OpenAI GPT"""
+    if not OPENAI_API_KEY:
+        return description[:500]  # Fallback to truncated description
+    
+    try:
+        prompt = f"""
+        Create a clear, concise summary of this grant opportunity. Focus on:
+        1. What the grant is for (purpose/goals)
+        2. Who can apply (eligibility)
+        3. Funding amount and timeline
+        4. Key requirements or focus areas
+        
+        Grant Title: {title}
+        Description: {description}
+        Eligibility: {eligibility}
+        Funding: {currency} {funding_min or 'TBD'} - {funding_max or 'TBD'}
+        
+        Write a 2-3 sentence summary in plain language that researchers can quickly understand.
+        """
+        
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a research funding expert who creates clear, concise summaries of grant opportunities for researchers."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=200,
+            temperature=0.3
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        log("warn", "Failed to generate AI summary", error=str(e))
+        return description[:500]  # Fallback to truncated description
+
+def generate_ai_title(title: str, description: str, source: str) -> str:
+    """Generate a better, more specific title using OpenAI GPT"""
+    if not OPENAI_API_KEY:
+        return title  # Fallback to original title
+    
+    try:
+        prompt = f"""
+        Create a more specific and descriptive title for this grant opportunity. The current title is too broad or generic.
+        
+        Current Title: {title}
+        Description: {description}
+        Source: {source}
+        
+        Requirements:
+        - Be specific about the research area or focus
+        - Include the funding agency if relevant
+        - Keep it under 80 characters
+        - Make it clear what type of funding this is (research, fellowship, equipment, etc.)
+        - Use professional academic language
+        
+        Return only the new title, nothing else.
+        """
+        
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a research funding expert who creates clear, specific titles for grant opportunities."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=50,
+            temperature=0.3
+        )
+        
+        new_title = response.choices[0].message.content.strip()
+        # Remove quotes if present
+        new_title = new_title.strip('"\'')
+        return new_title[:80]  # Ensure it fits in database
+        
+    except Exception as e:
+        log("warn", "Failed to generate AI title", error=str(e))
+        return title  # Fallback to original title
+
 def to_payload(source: str, url: str, title: str, description: str,
                eligibility: str,
                default_currency: str,
                deadline_hint: Optional[str] = None,
-               amount_hint: Optional[str] = None) -> Dict[str, Any]:
+               amount_hint: Optional[str] = None,
+               page_content: Optional[str] = None) -> Dict[str, Any]:
     fund_min, fund_max, currency = parse_amounts(
         (amount_hint or "") + " " + title + " " + description,
         default_currency=default_currency or "USD"
     )
     deadline_iso = parse_deadline(deadline_hint or description) or "2030-01-01T00:00:00.000Z"
+    
+    # Extract funding page URL if page content is available
+    funding_url = url
+    if page_content:
+        funding_url = extract_funding_page_url(url, page_content)
+    
+    # Generate AI content
+    ai_summary = generate_ai_summary(title, description, eligibility, fund_min, fund_max, currency)
+    ai_title = generate_ai_title(title, description, source)
+    
     return {
         "source": source,
         "sourceId": sha1(url)[:32],
-        "url": url,
-        "title": (title or "Untitled")[:500],
+        "url": funding_url,  # Use funding page URL instead of original
+        "title": ai_title[:500],  # Use AI-generated title
         "description": (description or "No description provided.")[:5000],
+        "summary": ai_summary[:2000],  # Add AI-generated summary
+        "aiTitle": ai_title[:500],  # Store AI title separately
+        "aiSummary": ai_summary[:2000],  # Store AI summary separately
         "eligibility": (eligibility or "See source page.")[:2000],
         "fundingMin": fund_min,
         "fundingMax": fund_max,
@@ -531,7 +663,16 @@ def collect_rss(feed_name: str, url: str, limit: int, default_currency: str) -> 
             if not looks_like_grant_page(link, title, desc):
                 continue
 
-            payload = to_payload(feed_name, link, title, desc, "See source page.", default_currency)
+            # Fetch page content for better URL extraction and AI processing
+            page_content = ""
+            try:
+                page_resp = fetch(link)
+                if page_resp and page_resp.text:
+                    page_content = page_resp.text
+            except Exception as e:
+                log("debug", "Failed to fetch page content", url=link, error=str(e))
+
+            payload = to_payload(feed_name, link, title, desc, "See source page.", default_currency, page_content=page_content)
             items.append(payload)
         except Exception as e:
             log("warn", "RSS entry parse error", error=str(e))
@@ -988,6 +1129,16 @@ def main():
                         desc  = fields.get("description","")
                         if not (title and desc): continue
                         if not looks_like_grant_page(p, title, desc): continue
+                        
+                        # Get page content for better URL extraction and AI processing
+                        page_content = ""
+                        try:
+                            page_resp = fetch(p)
+                            if page_resp and page_resp.text:
+                                page_content = page_resp.text
+                        except Exception as e:
+                            log("debug", "Failed to fetch page content", url=p, error=str(e))
+                        
                         payload = to_payload(
                             source=name, url=p,
                             title=title, description=desc,
@@ -995,6 +1146,7 @@ def main():
                             default_currency=default_currency,
                             deadline_hint=fields.get("deadline",""),
                             amount_hint=fields.get("amount",""),
+                            page_content=page_content,
                         )
                         items.append(payload)
                 elif typ == "html":
