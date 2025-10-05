@@ -1,6 +1,6 @@
 {
   "deploy": {
-    "startCommand": "python3 scraper/scraper.py",
+    "startCommand": "python3 scraper.py",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
@@ -9,7 +9,7 @@
   "cron": {
     "scraper": {
       "schedule": "0 */12 * * *",
-      "command": "python3 scraper/scraper.py --validate-existing",
+      "command": "python3 scraper.py --validate-existing",
       "timezone": "UTC"
     }
   }

@@ -14,16 +14,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY scraper/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy scraper files
-COPY scraper.py .
-COPY sources.yml .
-COPY deploy.sh .
+COPY scraper/scraper.py .
+COPY scraper/sources.yml .
+COPY railway-deploy.sh .
 
 # Make deploy script executable
-RUN chmod +x deploy.sh
+RUN chmod +x railway-deploy.sh
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
