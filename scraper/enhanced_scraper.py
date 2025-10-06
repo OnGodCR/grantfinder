@@ -31,7 +31,7 @@ from tenacity import RetryError
 import openai
 import pytz
 from fuzzywuzzy import fuzz, process
-import Levenshtein
+from rapidfuzz import fuzz as rapidfuzz
 
 # ----------------- ENHANCED CONFIGURATION -----------------
 @dataclass
@@ -366,9 +366,9 @@ def detect_duplicates(grants: List[GrantData], threshold: float = 0.8) -> List[L
             if j in processed:
                 continue
             
-            # Calculate similarity
-            title_sim = fuzz.ratio(grant1.title.lower(), grant2.title.lower()) / 100.0
-            desc_sim = fuzz.ratio(grant1.description.lower(), grant2.description.lower()) / 100.0
+            # Calculate similarity using rapidfuzz (faster and more compatible)
+            title_sim = rapidfuzz.ratio(grant1.title.lower(), grant2.title.lower()) / 100.0
+            desc_sim = rapidfuzz.ratio(grant1.description.lower(), grant2.description.lower()) / 100.0
             
             # Weighted similarity
             similarity = (title_sim * 0.7) + (desc_sim * 0.3)
