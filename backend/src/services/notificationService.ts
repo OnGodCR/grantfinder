@@ -285,7 +285,7 @@ export async function checkHighMatchNotifications(clerkId: string): Promise<void
   try {
     const user = await prisma.user.findUnique({
       where: { clerkId },
-      include: { matches: { include: { grant: true } } }
+      include: { matches: { include: { grant: { include: { agency: true } } } } }
     });
 
     if (!user) return;
@@ -356,7 +356,7 @@ export async function checkDeadlineNotifications(clerkId: string): Promise<void>
             }
           },
           include: { 
-            grant: true
+            grant: { include: { agency: true } }
           } 
         } 
       }

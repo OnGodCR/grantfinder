@@ -20,7 +20,11 @@ r.post('/collections', requireAuth, async (req: any, res) => {
   const user = await prisma.user.findFirst({ where: { clerkId: userId }});
   if (!user) return res.status(400).json({ error: 'User not found in DB. Complete onboarding.' });
   const col = await prisma.savedCollection.create({
-    data: { name, createdById: user.id, institutionId: user.institutionId || undefined }
+    data: { 
+      name, 
+      createdById: user.id, 
+      institutionId: user.institutionId || 'default-institution' // Provide a default value
+    }
   });
   res.json(col);
 });
