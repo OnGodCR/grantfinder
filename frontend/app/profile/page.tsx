@@ -8,9 +8,10 @@ import { User, Mail, Calendar, Award, Bookmark, TrendingUp, Settings, Bell, Shie
 import UserProfileManager from '@/components/UserProfileManager';
 import { UserProfile, getDefaultUserProfile } from '@/lib/matchScore';
 import { getMyPreferences } from '@/lib/me';
+import { getNotificationPreferences, updateNotificationPreferences, type NotificationPreferences } from '@/lib/notifications';
 
 export default function ProfilePage() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState('overview');
   const [researcherProfile, setResearcherProfile] = useState<UserProfile>(getDefaultUserProfile());
@@ -31,6 +32,14 @@ export default function ProfilePage() {
       deadlineBuffer: 30,
       matchThreshold: 70,
     }
+  });
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
+    highMatchThreshold: 75,
+    deadlineReminderDays: 30,
+    emailNotifications: true,
+    deadlineReminders: true,
+    newMatches: true,
+    weeklyDigest: false,
   });
   const [loading, setLoading] = useState(true);
 

@@ -1,7 +1,7 @@
 /**
  * Bookmark Management System
  * 
- * Handles storing and retrieving bookmarked grants using localStorage
+ * Handles storing and retrieving bookmarked grants using the backend API
  */
 
 export interface Bookmark {
@@ -13,21 +13,33 @@ export interface Bookmark {
   fundingMin?: number;
   fundingMax?: number;
   currency?: string;
-  bookmarkedAt: string;
   matchScore?: number;
+  bookmarkedAt?: string;
 }
 
-const BOOKMARKS_KEY = 'grantfinder_bookmarks';
+const API_BASE = "https://grantfinder-production.up.railway.app/api";
 
 /**
- * Get all bookmarked grants
+ * Get all bookmarked grants from the API
  */
-export function getBookmarks(): Bookmark[] {
-  if (typeof window === 'undefined') return [];
-  
+export async function getBookmarks(token?: string): Promise<Bookmark[]> {
   try {
-    const stored = localStorage.getItem(BOOKMARKS_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}/bookmarks`, {
+      method: 'GET',
+      headers,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch bookmarks: ${response.status}`);
+    }
+
+    return await response.json();
   } catch (error) {
     console.error('Error loading bookmarks:', error);
     return [];
@@ -35,34 +47,41 @@ export function getBookmarks(): Bookmark[] {
 }
 
 /**
- * Add a grant to bookmarks
+ * Add a grant to bookmarks via API
  */
-export function addBookmark(grant: any): boolean {
-  if (typeof window === 'undefined') return false;
-  
+export async function addBookmark(grant: any, token?: string): Promise<boolean> {
   try {
-    const bookmarks = getBookmarks();
-    const existingIndex = bookmarks.findIndex(b => b.grantId === grant.id);
-    
-    if (existingIndex >= 0) {
-      return false; // Already bookmarked
-    }
-    
-    const bookmark: Bookmark = {
-      id: `bookmark_${Date.now()}_${grant.id}`,
-      grantId: grant.id,
-      title: grant.title,
-      agency: grant.agency,
-      deadline: grant.deadline,
-      fundingMin: grant.fundingMin,
-      fundingMax: grant.fundingMax,
-      currency: grant.currency,
-      bookmarkedAt: new Date().toISOString(),
-      matchScore: grant.matchScore,
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
     };
-    
-    bookmarks.push(bookmark);
-    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}/bookmarks`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify({
+        grantId: grant.id,
+        title: grant.title,
+        agency: grant.agency,
+        deadline: grant.deadline,
+        fundingMin: grant.fundingMin,
+        fundingMax: grant.fundingMax,
+        currency: grant.currency,
+        matchScore: grant.matchScore,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      if (response.status === 400 && errorData.error?.includes('already bookmarked')) {
+        return false; // Already bookmarked
+      }
+      throw new Error(`Failed to add bookmark: ${response.status}`);
+    }
+
     return true;
   } catch (error) {
     console.error('Error adding bookmark:', error);
@@ -71,20 +90,25 @@ export function addBookmark(grant: any): boolean {
 }
 
 /**
- * Remove a grant from bookmarks
+ * Remove a grant from bookmarks via API
  */
-export function removeBookmark(grantId: string): boolean {
-  if (typeof window === 'undefined') return false;
-  
+export async function removeBookmark(grantId: string, token?: string): Promise<boolean> {
   try {
-    const bookmarks = getBookmarks();
-    const filtered = bookmarks.filter(b => b.grantId !== grantId);
-    
-    if (filtered.length === bookmarks.length) {
-      return false; // Not found
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
-    
-    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(filtered));
+
+    const response = await fetch(`${API_BASE}/bookmarks/${grantId}`, {
+      method: 'DELETE',
+      headers,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to remove bookmark: ${response.status}`);
+    }
+
     return true;
   } catch (error) {
     console.error('Error removing bookmark:', error);
@@ -93,31 +117,14 @@ export function removeBookmark(grantId: string): boolean {
 }
 
 /**
- * Check if a grant is bookmarked
+ * Check if a grant is bookmarked (requires fetching all bookmarks)
  */
-export function isBookmarked(grantId: string): boolean {
-  const bookmarks = getBookmarks();
-  return bookmarks.some(b => b.grantId === grantId);
-}
-
-/**
- * Get bookmark count
- */
-export function getBookmarkCount(): number {
-  return getBookmarks().length;
-}
-
-/**
- * Clear all bookmarks
- */
-export function clearBookmarks(): boolean {
-  if (typeof window === 'undefined') return false;
-  
+export async function isBookmarked(grantId: string, token?: string): Promise<boolean> {
   try {
-    localStorage.removeItem(BOOKMARKS_KEY);
-    return true;
+    const bookmarks = await getBookmarks(token);
+    return bookmarks.some(b => b.grantId === grantId);
   } catch (error) {
-    console.error('Error clearing bookmarks:', error);
+    console.error('Error checking bookmark status:', error);
     return false;
   }
 }

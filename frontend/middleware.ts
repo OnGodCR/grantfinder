@@ -1,13 +1,26 @@
-// Minimal, fail-safe middleware that can’t crash the site.
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { authMiddleware } from '@clerk/nextjs'
 
-export function middleware(_req: NextRequest) {
-  // Always pass through
-  return NextResponse.next()
-}
+export default authMiddleware({
+  // Routes that can be accessed while signed out
+  publicRoutes: [
+    '/',
+    '/about',
+    '/contact',
+    '/features',
+    '/sign-in(.*)',
+    '/sign-up(.*)',
+    '/api/debug(.*)',
+  ],
+  // Routes that can always be accessed, and have
+  // no authentication information
+  ignoredRoutes: [
+    '/api/webhooks(.*)',
+  ],
+})
 
-// Recommended matcher: run on app routes but skip static assets and _next files.
 export const config = {
-  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
+  // Protects all routes including api/trpc routes
+  // Please edit this to allow other routes to be public as needed.
+  // See https://clerk.com/docs/references/nextjs/auth-middleware for more information about configuring the Middleware
+  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
 }

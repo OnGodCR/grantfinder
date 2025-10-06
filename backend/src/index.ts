@@ -5,6 +5,8 @@ import bodyParser from "body-parser";
 import { prisma } from "./prisma.js";
 import grants from "./routes/grants.js";
 import profiles from "./routes/profiles.js";
+import bookmarks from "./routes/bookmarks.js";
+import notifications from "./routes/notifications.js";
 
 const app = express();
 
@@ -52,6 +54,8 @@ app.use(bodyParser.json({ limit: "1mb" }));
 // ---- routes
 app.use("/api", grants);
 app.use("/api", profiles);
+app.use("/api/bookmarks", bookmarks);
+app.use("/api/notifications", notifications);
 
 app.get("/api/health", async (_req, res) => {
   try {

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, Bell, User, ChevronDown, Bookmark, Trash2, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@clerk/nextjs';
+import { getUnreadNotificationCount } from '@/lib/notifications';
 
 interface TopNavbarProps {
   onSearch: (query: string) => void;
@@ -14,8 +15,9 @@ export default function TopNavbar({ onSearch, showSearch = true }: TopNavbarProp
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { signOut } = useAuth();
+  const { signOut, getToken, isSignedIn } = useAuth();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -29,6 +31,26 @@ export default function TopNavbar({ onSearch, showSearch = true }: TopNavbarProp
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Load unread notification count
+  useEffect(() => {
+    if (isSignedIn) {
+      const loadUnreadCount = async () => {
+        try {
+          const token = await getToken();
+          const count = await getUnreadNotificationCount(token);
+          setUnreadCount(count);
+        } catch (error) {
+          console.error('Error loading unread count:', error);
+        }
+      };
+      
+      loadUnreadCount();
+      // Refresh every 30 seconds
+      const interval = setInterval(loadUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isSignedIn, getToken]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +116,11 @@ export default function TopNavbar({ onSearch, showSearch = true }: TopNavbarProp
           {/* Notifications */}
           <Link href="/notifications" className="relative p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all duration-200 hover:scale-105">
             <Bell className="h-5 w-5" />
-            <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-2 right-2 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-red-500 rounded-full animate-pulse">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </Link>
 
           {/* Profile Dropdown */}

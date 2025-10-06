@@ -2,39 +2,10 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { requireAuthOrSkip, requireInternalToken } from "../middleware/auth.js";
 import axios from "axios";
 
 const router = Router();
-
-/** ---------- public/user auth (search) ---------- */
-function requireAuthOrSkip(req: Request, res: Response, next: NextFunction) {
-  if (process.env.SKIP_AUTH === "1" || process.env.SKIP_AUTH === "true") return next();
-  
-  // Check for Clerk Bearer token
-  const auth = (req.headers.authorization || "").toLowerCase();
-  if (auth.startsWith("bearer ")) {
-    // Valid Bearer token found
-    return next();
-  }
-  
-  // If no auth provided, allow but log for debugging
-  console.log("No authentication provided for /grants endpoint");
-  return next();
-}
-
-/** ---------- internal token auth (scraper insert) ---------- */
-function requireInternalToken(req: Request, res: Response, next: NextFunction) {
-  // Check both x-internal-token header and Authorization Bearer
-  const headerToken = req.headers["x-internal-token"];
-  const authHeader = req.headers.authorization || "";
-  const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  
-  const token = headerToken || bearerToken;
-  if (!token || token !== process.env.INTERNAL_API_TOKEN) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  return next();
-}
 
 /** ---------- prefs loader (dynamic) ---------- */
 const DEFAULT_PREFS_MODELS = (process.env.PREFS_MODELS || "Preference,UserPreference,Profile,Me,UserPrefs,Settings")

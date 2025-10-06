@@ -1,0 +1,435 @@
+# Enhanced Sources Configuration for 1000+ Grants
+# This configuration targets multiple grant sources across different categories
+
+defaults:
+  currency: USD
+  timeout: 30
+  delay_ms: 400
+  max_retries: 3
+  confidence_threshold: 60.0
+
+feeds:
+  # === FEDERAL GOVERNMENT SOURCES (300+ grants) ===
+  - name: "NSF All Programs"
+    type: rss
+    url: "https://www.nsf.gov/rss/rss_www_funding.xml"
+    limit: 75
+    priority: high
+
+  - name: "NIH All Programs"
+    type: rss
+    url: "https://grants.nih.gov/grants/guide/WeeklyIndex.cfm?RSSFeed=FundingOpportunities"
+    limit: 75
+    priority: high
+
+  - name: "Grants.gov Comprehensive"
+    type: sitemap
+    url: "https://www.grants.gov/sitemap.xml"
+    include_patterns:
+      - "/web/grants/view-"
+      - "/funding-opportunity"
+      - "/opportunity"
+    limit: 150
+    priority: high
+    rules:
+      title:
+        css: "h1, h2, .opportunity-title, .page-title"
+      description:
+        css: "main, article, .content, #content, .opportunity-body"
+      deadline:
+        css: ".closing-date, .deadline, .due-date, .submission-deadline"
+        regex: "(?:Deadline|Closing|Due|Submission)[:\s]+([^\n<]+)"
+      amount:
+        css: ".award-amount, .funding-amount, .budget"
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\s\$£€]*([\$£€]?[\d,\.]+(?:\s?-\s?[\$£€]?[\d,\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who-can-apply, .applicant-eligibility"
+
+  - name: "SAM.gov Contracts"
+    type: search
+    queries:
+      - "site:sam.gov contract opportunity"
+      - "site:beta.sam.gov grant opportunity"
+      - "site:sam.gov funding opportunity"
+      - "site:sam.gov solicitation"
+    max_results_per_query: 40
+    limit: 100
+    priority: high
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Closing|Due|Response)[:\s]+([^\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\s\$£€]*([\$£€]?[\d,\.]+(?:\s?-\s?[\$£€]?[\d,\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  - name: "USA.gov Grants"
+    type: search
+    queries:
+      - "site:grants.gov funding opportunity"
+      - "site:sam.gov contract opportunity"
+      - "site:beta.sam.gov grant opportunity"
+      - "site:usa.gov grant"
+    max_results_per_query: 30
+    limit: 80
+    priority: high
+
+  # === FOUNDATION GRANTS (250+ grants) ===
+  - name: "Ford Foundation"
+    type: html
+    start_urls:
+      - "https://www.fordfoundation.org/work/our-grants/"
+      - "https://www.fordfoundation.org/work/our-grants/grants-database/"
+    same_host_only: true
+    include_patterns:
+      - "/grants"
+      - "/funding"
+      - "/programs"
+    exclude_patterns:
+      - "/privacy"
+      - "/terms"
+      - "/about"
+    max_pages: 120
+    per_page_delay_ms: 500
+    limit: 60
+    priority: high
+    rules:
+      title:
+        css: "h1, h2, .entry-title, .grant-title"
+      description:
+        css: "main, article, .content, #content, .grant-description"
+      deadline:
+        regex: "(?:Deadline|Apply by|Due)[:\s]+([^\n<]+)"
+      amount:
+        regex: "(?:Up to|Maximum|Award|Budget)[:\s\$£€]*([\$£€]?[\d,\.]+(?:\s?-\s?[\$£€]?[\d,\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements, .applicant-requirements"
+
+  - name: "Gates Foundation"
+    type: search
+    queries:
+      - "site:gatesfoundation.org grant application"
+      - "site:gatesfoundation.org funding opportunity"
+      - "site:gatesfoundation.org program"
+      - "site:gatesfoundation.org initiative"
+    max_results_per_query: 25
+    limit: 60
+    priority: high
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Apply by|Due)[:\s]+([^\n<]+)"
+      amount:
+        regex: "(?:Up to|Maximum|Award|Budget)[:\s\$£€]*([\$£€]?[\d,\.]+(?:\s?-\s?[\$£€]?[\d,\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  - name: "MacArthur Foundation"
+    type: search
+    queries:
+      - "site:macfound.org grant application"
+      - "site:macfound.org funding opportunity"
+      - "site:macfound.org fellowship"
+    max_results_per_query: 20
+    limit: 40
+    priority: medium
+
+  - name: "Rockefeller Foundation"
+    type: search
+    queries:
+      - "site:rockefellerfoundation.org grant application"
+      - "site:rockefellerfoundation.org funding opportunity"
+      - "site:rockefellerfoundation.org initiative"
+    max_results_per_query: 20
+    limit: 40
+    priority: medium
+
+  - name: "Sloan Foundation"
+    type: search
+    queries:
+      - "site:sloan.org grant application"
+      - "site:sloan.org funding opportunity"
+      - "site:sloan.org fellowship"
+    max_results_per_query: 15
+    limit: 30
+    priority: medium
+
+  - name: "Hewlett Foundation"
+    type: search
+    queries:
+      - "site:hewlett.org grant application"
+      - "site:hewlett.org funding opportunity"
+    max_results_per_query: 15
+    limit: 25
+    priority: medium
+
+  # === INTERNATIONAL GRANTS (200+ grants) ===
+  - name: "EU Horizon Europe"
+    type: search
+    queries:
+      - "site:ec.europa.eu horizon europe funding"
+      - "site:ec.europa.eu research and innovation grants"
+      - "site:ec.europa.eu call for proposals"
+      - "site:ec.europa.eu funding opportunity"
+    max_results_per_query: 30
+    limit: 80
+    priority: high
+    rules:
+      title:
+        css: "h1, h2, title"
+      description:
+        css: "main, article, .content, body"
+      deadline:
+        regex: "(?:Deadline|Closing|Due)[:\s]+([^\n<]+)"
+      amount:
+        regex: "(?:Award|Budget|Amount|Max|Up to)[:\s\$£€]*([\$£€]?[\d,\.]+(?:\s?-\s?[\$£€]?[\d,\.]+)?)"
+      eligibility:
+        css: ".eligibility, .who, .requirements"
+
+  - name: "UK Research Councils"
+    type: search
+    queries:
+      - "site:ukri.org funding opportunity"
+      - "site:epsrc.ukri.org grant application"
+      - "site:bbsrc.ukri.org funding"
+      - "site:esrc.ukri.org funding"
+      - "site:mrc.ukri.org funding"
+    max_results_per_query: 25
+    limit: 70
+    priority: high
+
+  - name: "Canadian Research"
+    type: search
+    queries:
+      - "site:nserc-crsng.gc.ca funding opportunity"
+      - "site:cihr-irsc.gc.ca grant application"
+      - "site:sshrc-crsh.gc.ca funding"
+      - "site:nserc.ca funding"
+    max_results_per_query: 20
+    limit: 50
+    priority: medium
+
+  - name: "Australian Research"
+    type: search
+    queries:
+      - "site:arc.gov.au funding opportunity"
+      - "site:nhmrc.gov.au grant application"
+      - "site:arc.gov.au grant"
+    max_results_per_query: 15
+    limit: 30
+    priority: medium
+
+  # === ACADEMIC AND RESEARCH GRANTS (200+ grants) ===
+  - name: "University Research"
+    type: search
+    queries:
+      - "site:.edu research funding opportunity"
+      - "site:.edu grant application deadline"
+      - "site:.edu fellowship application"
+      - "site:.edu internal funding"
+      - "site:.edu research grant"
+    max_results_per_query: 40
+    limit: 100
+    priority: medium
+
+  - name: "Top Research Universities"
+    type: search
+    queries:
+      - "site:stanford.edu funding opportunity"
+      - "site:mit.edu grant application"
+      - "site:harvard.edu funding"
+      - "site:berkeley.edu research funding"
+      - "site:yale.edu funding"
+      - "site:princeton.edu funding"
+      - "site:columbia.edu funding"
+    max_results_per_query: 20
+    limit: 80
+    priority: medium
+
+  - name: "Research Institutes"
+    type: search
+    queries:
+      - "site:.org research funding opportunity"
+      - "site:.org grant application"
+      - "site:.org fellowship"
+      - "site:.org research grant"
+    max_results_per_query: 30
+    limit: 60
+    priority: medium
+
+  # === TECHNOLOGY AND INNOVATION GRANTS (150+ grants) ===
+  - name: "SBIR/STTR Programs"
+    type: search
+    queries:
+      - "SBIR grant application"
+      - "STTR funding opportunity"
+      - "small business innovation research"
+      - "small business technology transfer"
+      - "site:sbir.gov funding"
+    max_results_per_query: 30
+    limit: 60
+    priority: high
+
+  - name: "Tech Innovation"
+    type: search
+    queries:
+      - "technology innovation grant"
+      - "startup funding opportunity"
+      - "innovation challenge grant"
+      - "tech accelerator program"
+      - "digital innovation grant"
+    max_results_per_query: 25
+    limit: 50
+    priority: medium
+
+  - name: "AI and Machine Learning"
+    type: search
+    queries:
+      - "artificial intelligence grant"
+      - "machine learning funding"
+      - "AI research grant"
+      - "data science funding"
+    max_results_per_query: 20
+    limit: 40
+    priority: medium
+
+  # === SPECIALIZED FIELDS (200+ grants) ===
+  - name: "Climate and Environment"
+    type: search
+    queries:
+      - "climate change grant application"
+      - "environmental funding opportunity"
+      - "sustainability grant"
+      - "green technology funding"
+      - "renewable energy grant"
+      - "carbon reduction grant"
+    max_results_per_query: 25
+    limit: 60
+    priority: medium
+
+  - name: "Health and Medical"
+    type: search
+    queries:
+      - "health research grant application"
+      - "medical funding opportunity"
+      - "public health grant"
+      - "biomedical research funding"
+      - "clinical trial funding"
+      - "healthcare innovation grant"
+    max_results_per_query: 25
+    limit: 60
+    priority: medium
+
+  - name: "Arts and Culture"
+    type: search
+    queries:
+      - "arts grant application"
+      - "cultural funding opportunity"
+      - "creative arts grant"
+      - "humanities funding"
+      - "museum funding"
+      - "performing arts grant"
+    max_results_per_query: 20
+    limit: 40
+    priority: low
+
+  - name: "Education"
+    type: search
+    queries:
+      - "education grant application"
+      - "educational funding opportunity"
+      - "teacher grant"
+      - "student funding"
+      - "educational research grant"
+      - "STEM education grant"
+    max_results_per_query: 25
+    limit: 50
+    priority: medium
+
+  - name: "Social Impact"
+    type: search
+    queries:
+      - "social impact grant"
+      - "community development funding"
+      - "social justice grant"
+      - "equity funding opportunity"
+      - "inclusion grant"
+    max_results_per_query: 20
+    limit: 40
+    priority: medium
+
+  # === CORPORATE AND CSR GRANTS (100+ grants) ===
+  - name: "Corporate Grants"
+    type: search
+    queries:
+      - "corporate grant application"
+      - "company foundation funding"
+      - "corporate social responsibility grants"
+      - "corporate philanthropy"
+      - "business grant program"
+    max_results_per_query: 20
+    limit: 40
+    priority: low
+
+  - name: "Tech Company Grants"
+    type: search
+    queries:
+      - "google.org grant"
+      - "microsoft philanthropy"
+      - "facebook social good"
+      - "apple grant program"
+      - "amazon community grant"
+    max_results_per_query: 15
+    limit: 30
+    priority: low
+
+  # === STATE AND LOCAL GRANTS (100+ grants) ===
+  - name: "State Government Grants"
+    type: search
+    queries:
+      - "site:.gov state grant application"
+      - "site:.gov state funding opportunity"
+      - "site:.gov state research grant"
+    max_results_per_query: 25
+    limit: 50
+    priority: medium
+
+  - name: "Local Government Grants"
+    type: search
+    queries:
+      - "site:.gov local grant application"
+      - "site:.gov city funding opportunity"
+      - "site:.gov county grant"
+    max_results_per_query: 20
+    limit: 40
+    priority: low
+
+  # === NONPROFIT AND NGO GRANTS (100+ grants) ===
+  - name: "Nonprofit Grants"
+    type: search
+    queries:
+      - "site:.org grant application"
+      - "site:.org funding opportunity"
+      - "site:.org fellowship application"
+      - "site:.org research grant"
+    max_results_per_query: 30
+    limit: 60
+    priority: medium
+
+  - name: "International NGOs"
+    type: search
+    queries:
+      - "site:.int grant application"
+      - "site:.int funding opportunity"
+      - "UN grant application"
+      - "WHO funding opportunity"
+    max_results_per_query: 20
+    limit: 40
+    priority: medium
