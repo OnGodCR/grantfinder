@@ -99,19 +99,37 @@ export default function ProfilePage() {
         }
       }
 
-      // Fetch grants data
-      const grantsResponse = await fetch('/api/grants?limit=1000');
-      if (grantsResponse.ok) {
-        const grantsData = await grantsResponse.json();
-        setProfileData(prev => ({
-          ...prev,
-          totalGrants: grantsData.count || 0
-        }));
+      // Fetch grants data from backend
+      try {
+        const token = await getToken();
+        const grantsResponse = await fetch('https://grantfinder-production.up.railway.app/api/grants', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          },
+          body: JSON.stringify({ limit: 1000 })
+        });
+        if (grantsResponse.ok) {
+          const grantsData = await grantsResponse.json();
+          setProfileData(prev => ({
+            ...prev,
+            totalGrants: grantsData.count || 0
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching grants:', error);
       }
 
-      // Fetch bookmarks data (if you have a bookmarks API)
+      // Fetch bookmarks data from backend
       try {
-        const bookmarksResponse = await fetch('/api/bookmarks');
+        const token = await getToken();
+        const bookmarksResponse = await fetch('https://grantfinder-production.up.railway.app/api/bookmarks', {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          }
+        });
         if (bookmarksResponse.ok) {
           const bookmarksData = await bookmarksResponse.json();
           setProfileData(prev => ({
@@ -120,7 +138,7 @@ export default function ProfilePage() {
           }));
         }
       } catch (error) {
-        console.log('Bookmarks API not available yet');
+        console.error('Error fetching bookmarks:', error);
       }
 
     } catch (error) {
