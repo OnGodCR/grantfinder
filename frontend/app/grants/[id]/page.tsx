@@ -17,19 +17,35 @@ export default function GrantDetail() {
 
   useEffect(() => {
     if (g?.id) {
-      setBookmarked(isBookmarked(g.id))
+      const checkBookmark = async () => {
+        try {
+          const token = await getToken();
+          const isBooked = await isBookmarked(g.id, token || undefined);
+          setBookmarked(isBooked);
+        } catch (error) {
+          console.error('Error checking bookmark status:', error);
+        }
+      };
+      checkBookmark();
     }
-  }, [g?.id])
+  }, [g?.id, getToken])
 
-  const handleBookmarkToggle = () => {
-    if (bookmarked) {
-      if (removeBookmark(g.id)) {
-        setBookmarked(false)
+  const handleBookmarkToggle = async () => {
+    try {
+      const token = await getToken();
+      if (bookmarked) {
+        const success = await removeBookmark(g.id, token || undefined);
+        if (success) {
+          setBookmarked(false);
+        }
+      } else {
+        const success = await addBookmark(g, token || undefined);
+        if (success) {
+          setBookmarked(true);
+        }
       }
-    } else {
-      if (addBookmark(g)) {
-        setBookmarked(true)
-      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
     }
   }
 
