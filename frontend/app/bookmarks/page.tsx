@@ -24,10 +24,11 @@ export default function BookmarksPage() {
   useEffect(() => {
     if (!isLoaded) return;
     
-    const loadBookmarks = () => {
+    const loadBookmarks = async () => {
       try {
         setLoading(true);
-        const bookmarks = getBookmarks();
+        const token = await getToken();
+        const bookmarks = await getBookmarks(token);
         setBookmarkedGrants(bookmarks);
       } catch (err: any) {
         setError(err.message || 'Failed to load bookmarks');
@@ -37,11 +38,17 @@ export default function BookmarksPage() {
     };
 
     loadBookmarks();
-  }, [isLoaded]);
+  }, [isLoaded, getToken]);
 
-  const handleRemoveBookmark = (grantId: string) => {
-    if (removeBookmark(grantId)) {
-      setBookmarkedGrants(prev => prev.filter(grant => grant.grantId !== grantId));
+  const handleRemoveBookmark = async (grantId: string) => {
+    try {
+      const token = await getToken();
+      const success = await removeBookmark(grantId, token);
+      if (success) {
+        setBookmarkedGrants(prev => prev.filter(grant => grant.grantId !== grantId));
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove bookmark');
     }
   };
 
