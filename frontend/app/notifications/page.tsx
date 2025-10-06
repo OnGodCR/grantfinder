@@ -21,7 +21,7 @@ export default function NotificationsPage() {
       try {
         setLoading(true);
         const token = await getToken();
-        const data = await getNotifications(token);
+        const data = await getNotifications(token || undefined);
         setNotifications(data);
       } catch (err: any) {
         setError(err.message || 'Failed to load notifications');
@@ -36,9 +36,9 @@ export default function NotificationsPage() {
   const handleMarkAsRead = async (notificationId: string) => {
     try {
       const token = await getToken();
-      const success = await markNotificationAsRead(notificationId, token);
+      const success = await markNotificationAsRead(notificationId, token || undefined);
       if (success) {
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
         );
       }
@@ -50,7 +50,7 @@ export default function NotificationsPage() {
   const handleMarkAllAsRead = async () => {
     try {
       const token = await getToken();
-      const success = await markAllNotificationsAsRead(token);
+      const success = await markAllNotificationsAsRead(token || undefined);
       if (success) {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       }

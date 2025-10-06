@@ -28,7 +28,7 @@ export default function BookmarksPage() {
       try {
         setLoading(true);
         const token = await getToken();
-        const bookmarks = await getBookmarks(token);
+        const bookmarks = await getBookmarks(token || undefined);
         setBookmarkedGrants(bookmarks);
       } catch (err: any) {
         setError(err.message || 'Failed to load bookmarks');
@@ -43,7 +43,7 @@ export default function BookmarksPage() {
   const handleRemoveBookmark = async (grantId: string) => {
     try {
       const token = await getToken();
-      const success = await removeBookmark(grantId, token);
+      const success = await removeBookmark(grantId, token || undefined);
       if (success) {
         setBookmarkedGrants(prev => prev.filter(grant => grant.grantId !== grantId));
       }

@@ -38,7 +38,7 @@ export default function TopNavbar({ onSearch, showSearch = true }: TopNavbarProp
       const loadUnreadCount = async () => {
         try {
           const token = await getToken();
-          const count = await getUnreadNotificationCount(token);
+          const count = await getUnreadNotificationCount(token || undefined);
           setUnreadCount(count);
         } catch (error) {
           console.error('Error loading unread count:', error);
