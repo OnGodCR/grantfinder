@@ -59,7 +59,7 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    const bookmarks = user.bookmarks || [];
+    const bookmarks = (user.bookmarks as any[]) || [];
     
     // Check if already bookmarked
     const existingBookmark = bookmarks.find((b: any) => b.grantId === grantId);
@@ -113,7 +113,7 @@ router.delete("/:grantId", requireAuth, async (req: Request, res: Response) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const bookmarks = user.bookmarks || [];
+    const bookmarks = (user.bookmarks as any[]) || [];
     const updatedBookmarks = bookmarks.filter((b: any) => b.grantId !== grantId);
 
     if (updatedBookmarks.length === bookmarks.length) {

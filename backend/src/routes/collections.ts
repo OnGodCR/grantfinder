@@ -17,10 +17,10 @@ r.post('/collections', requireAuth, async (req: any, res) => {
   const userId = req.auth.userId;
   const { name } = req.body;
   // Fetch the user's institution id
-  const user = await prisma.user.findFirst({ where: { clerkUserId: userId }});
+  const user = await prisma.user.findFirst({ where: { clerkId: userId }});
   if (!user) return res.status(400).json({ error: 'User not found in DB. Complete onboarding.' });
   const col = await prisma.savedCollection.create({
-    data: { name, createdById: user.id, institutionId: user.institutionId }
+    data: { name, createdById: user.id, institutionId: user.institutionId || undefined }
   });
   res.json(col);
 });

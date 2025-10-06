@@ -244,7 +244,7 @@ export async function getUserNotificationPreferences(clerkId: string): Promise<N
     });
 
     if (user?.notificationPreferences) {
-      return { ...DEFAULT_NOTIFICATION_PREFERENCES, ...user.notificationPreferences as NotificationPreferences };
+      return { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(user.notificationPreferences as any) };
     }
 
     return DEFAULT_NOTIFICATION_PREFERENCES;
@@ -326,7 +326,7 @@ export async function checkHighMatchNotifications(clerkId: string): Promise<void
           actionUrl: `/grants/${match.grantId}`,
           metadata: { 
             matchScore: match.score,
-            agency: match.grant.agency?.name,
+            agency: match.grant.agency?.name || 'Unknown Agency',
             fundingRange: {
               min: match.grant.fundingMin,
               max: match.grant.fundingMax,
@@ -350,12 +350,13 @@ export async function checkDeadlineNotifications(clerkId: string): Promise<void>
       where: { clerkId },
       include: { 
         matches: { 
-          include: { 
+          where: {
             grant: {
-              where: {
-                deadline: { not: null }
-              }
+              deadline: { not: null }
             }
+          },
+          include: { 
+            grant: true
           } 
         } 
       }
