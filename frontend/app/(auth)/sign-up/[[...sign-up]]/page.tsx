@@ -32,6 +32,7 @@ export default function Page() {
             }}
             redirectUrl="/onboarding"
             signInUrl="/sign-in"
+            afterSignUpUrl="/onboarding"
           />
         </div>
       </div>
