@@ -37,5 +37,5 @@ COPY --from=builder /app/package*.json ./
 
 EXPOSE 4000
 
-# ✅ Generate Prisma client, then run migrations (or db push if none), then start server
-CMD ["sh", "-c", "npx prisma generate --schema=prisma/schema.prisma && (npx prisma migrate deploy || npx prisma db push) && node dist/index.js"]
+# ✅ Generate Prisma client, then push schema changes, then start server
+CMD ["sh", "-c", "npx prisma generate --schema=prisma/schema.prisma && npx prisma db push --accept-data-loss && node dist/index.js"]
