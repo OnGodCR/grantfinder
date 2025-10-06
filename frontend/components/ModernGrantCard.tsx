@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Calendar, DollarSign, ExternalLink, Bookmark, Building } from 'lucide-react';
+import { useAuth } from '@clerk/nextjs';
 import MatchScoreDetails from './MatchScoreDetails';
 import { addBookmark, removeBookmark, isBookmarked } from '@/lib/bookmarks';
 
@@ -32,22 +33,39 @@ interface ModernGrantCardProps {
 export default function ModernGrantCard({ grant, onBookmark, isBookmarked: propIsBookmarked = false }: ModernGrantCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const { getToken } = useAuth();
 
   useEffect(() => {
-    setBookmarked(isBookmarked(grant.id));
-  }, [grant.id]);
+    const checkBookmark = async () => {
+      try {
+        const token = await getToken();
+        const isBooked = await isBookmarked(grant.id, token || undefined);
+        setBookmarked(isBooked);
+      } catch (error) {
+        console.error('Error checking bookmark status:', error);
+      }
+    };
+    checkBookmark();
+  }, [grant.id, getToken]);
 
-  const handleBookmarkToggle = () => {
-    if (bookmarked) {
-      if (removeBookmark(grant.id)) {
-        setBookmarked(false);
-        onBookmark?.(grant.id);
+  const handleBookmarkToggle = async () => {
+    try {
+      const token = await getToken();
+      if (bookmarked) {
+        const success = await removeBookmark(grant.id, token || undefined);
+        if (success) {
+          setBookmarked(false);
+          onBookmark?.(grant.id);
+        }
+      } else {
+        const success = await addBookmark(grant, token || undefined);
+        if (success) {
+          setBookmarked(true);
+          onBookmark?.(grant.id);
+        }
       }
-    } else {
-      if (addBookmark(grant)) {
-        setBookmarked(true);
-        onBookmark?.(grant.id);
-      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
     }
   };
 
