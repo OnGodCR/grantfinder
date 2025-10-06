@@ -1,5 +1,4 @@
 // frontend/lib/api.ts
-import { auth } from '@clerk/nextjs';
 
 const API_BASE = "https://grantfinder-production.up.railway.app/api";
 
@@ -25,12 +24,4 @@ export async function fetchGrants(payload: any, token?: string) {
     throw new Error(`fetchGrants failed: ${res.status}  ${text}`);
   }
   return res.json();
-}
-
-// Server-side function for API routes
-export async function fetchGrantsServer(payload: any) {
-  const { getToken } = auth();
-  const token = await getToken();
-  
-  return fetchGrants(payload, token || undefined);
 }
