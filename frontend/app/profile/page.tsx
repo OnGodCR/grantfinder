@@ -84,17 +84,19 @@ export default function ProfilePage() {
       setLoading(true);
       
       // Fetch user preferences
-      const prefs = await getMyPreferences();
-      if (prefs) {
-        setProfileData(prev => ({
-          ...prev,
-          researchInterests: prefs.researchInterests || [],
-          preferences: {
-            fundingRange: prefs.fundingRange || { min: 50000, max: 500000 },
-            deadlineBuffer: prefs.deadlineBuffer || 30,
-            matchThreshold: prefs.matchThreshold || 70,
-          }
-        }));
+      if (user?.id) {
+        const prefs = await getMyPreferences(user.id);
+        if (prefs.exists && prefs.data) {
+          setProfileData(prev => ({
+            ...prev,
+            researchInterests: prefs.data.researchInterests || [],
+            preferences: {
+              fundingRange: prefs.data.fundingRange || { min: 50000, max: 500000 },
+              deadlineBuffer: prefs.data.deadlineBuffer || 30,
+              matchThreshold: prefs.data.matchThreshold || 70,
+            }
+          }));
+        }
       }
 
       // Fetch grants data
@@ -129,10 +131,10 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
+    if (isLoaded && isSignedIn && user?.id) {
       fetchProfileData();
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, user?.id]);
 
   return (
     <div className="min-h-screen bg-slate-900">
