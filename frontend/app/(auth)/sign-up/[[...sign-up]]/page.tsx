@@ -30,9 +30,10 @@ export default function Page() {
                 dividerText: 'text-slate-400',
               }
             }}
-            redirectUrl="https://grantlytic.com/onboarding"
-            signInUrl="https://grantlytic.com/sign-in"
-            afterSignUpUrl="https://grantlytic.com/onboarding"
+            redirectUrl="/onboarding"
+            signInUrl="/sign-in"
+            afterSignUpUrl="/onboarding"
+            forceRedirectUrl="/onboarding"
           />
         </div>
       </div>
