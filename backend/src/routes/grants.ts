@@ -201,7 +201,7 @@ router.post("/internal/grants", requireInternalToken, async (req: Request, res: 
 router.post("/grants", requireAuthOrSkip, async (req: Request, res: Response) => {
   try {
     const q = (req.body?.q ?? "").toString().trim();
-    const limit = Math.min(Math.max(Number(req.body?.limit ?? 24), 1), 100);
+    const limit = Math.min(Math.max(Number(req.body?.limit ?? 1000), 1), 1000);
     const offset = Math.max(Number(req.body?.offset ?? 0), 0);
 
     const where: Prisma.GrantWhereInput = q
