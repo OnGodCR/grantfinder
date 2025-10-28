@@ -182,15 +182,15 @@ export function calculateMatchScore(grant: Grant, profile: UserProfile): MatchRe
     recommendations.push('Consider if you meet the experience requirements');
   }
 
-  // Calculate weighted score
+  // Calculate weighted score (aligned with backend weights)
   const weights = {
-    keywordMatch: 0.30,
+    keywordMatch: 0.35,    // Increased weight for keywords to match backend
     fundingMatch: 0.20,
     deadlineMatch: 0.15,
     agencyMatch: 0.15,
     typeMatch: 0.10,
     locationMatch: 0.05,
-    experienceMatch: 0.05,
+    experienceMatch: 0.00, // Removed experience weight to match backend
   };
 
   const score = Math.round(
@@ -218,53 +218,62 @@ function calculateKeywordMatch(grant: Grant, profile: UserProfile): number {
   const grantText = `${grant.title} ${grant.description} ${grant.summary || ''} ${grant.keywords?.join(' ') || ''}`.toLowerCase();
   const userInterests = profile.researchInterests.map(interest => interest.toLowerCase());
   
-  let matchCount = 0;
-  let totalWeight = 0;
+  if (userInterests.length === 0) return 0.3; // Default score if no interests
+  
+  let totalScore = 0;
+  let exactMatches = 0;
+  let partialMatches = 0;
 
   for (const interest of userInterests) {
-    const words = interest.split(/\s+/);
+    const words = interest.split(/\s+/).filter(word => word.length > 2);
     let interestScore = 0;
     
     for (const word of words) {
-      if (word.length > 2) { // Ignore short words
-        // Very flexible matching - check for partial matches
-        if (grantText.includes(word)) {
-          interestScore += 0.5; // Higher base score for partial match
-        }
-        
-        // Check for exact word matches
-        const regex = new RegExp(`\\b${word}\\b`, 'gi');
-        const matches = (grantText.match(regex) || []).length;
-        interestScore += Math.min(matches * 0.3, 0.5); // Cap at 0.5 per word
+      // Exact word boundary match (higher weight)
+      const exactRegex = new RegExp(`\\b${word}\\b`, 'gi');
+      if (exactRegex.test(grantText)) {
+        exactMatches++;
+        interestScore += 1.0;
+      }
+      // Partial match (lower weight)
+      else if (grantText.includes(word)) {
+        partialMatches++;
+        interestScore += 0.5;
       }
     }
     
-    matchCount += Math.min(interestScore, 1); // Cap at 1 per interest
-    totalWeight += 1;
+    // Cap each interest at 1.0
+    totalScore += Math.min(interestScore, 1.0);
   }
 
+  // Calculate base score
+  const baseScore = totalScore / userInterests.length;
+  
+  // Bonus for multiple exact matches
+  const exactBonus = Math.min(exactMatches * 0.1, 0.3);
+  
   // If no matches found, give a decent score based on common research terms
-  if (matchCount === 0) {
+  if (baseScore === 0) {
     const commonTerms = ['research', 'study', 'investigation', 'analysis', 'development', 'innovation', 'technology', 'science', 'grant', 'funding', 'project', 'program'];
     let commonMatches = 0;
     for (const term of commonTerms) {
       if (grantText.includes(term)) {
-        commonMatches += 0.15; // Higher score for common terms
+        commonMatches += 0.15;
       }
     }
-    return Math.min(commonMatches, 0.6); // Max 60% for common terms
+    return Math.min(commonMatches, 0.6);
   }
 
-  // Ensure we always get a decent score
-  const baseScore = totalWeight > 0 ? matchCount / totalWeight : 0.3;
-  return Math.max(baseScore, 0.3); // Minimum 30% score
+  // Ensure minimum score and cap at 1.0
+  const finalScore = Math.max(baseScore + exactBonus, 0.2);
+  return Math.min(finalScore, 1.0);
 }
 
 /**
  * Calculate funding amount matching score
  */
 function calculateFundingMatch(grant: Grant, profile: UserProfile): number {
-  if (!grant.fundingMin && !grant.fundingMax) return 0.7; // Unknown funding - give good score
+  if (!grant.fundingMin && !grant.fundingMax) return 0.7; // Unknown funding - good score
 
   const grantMin = grant.fundingMin || 0;
   const grantMax = grant.fundingMax || grantMin;
@@ -273,10 +282,10 @@ function calculateFundingMatch(grant: Grant, profile: UserProfile): number {
 
   // Check if grant funding overlaps with user preferences
   if (grantMax < userMin) {
-    return 0.4; // Grant max is below user minimum - still give decent score
+    return 0.4; // Grant max is below user minimum
   }
   if (grantMin > userMax) {
-    return 0.4; // Grant min is above user maximum - still give decent score
+    return 0.4; // Grant min is above user maximum
   }
 
   // Calculate overlap percentage

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { UserButton } from '@clerk/nextjs';
 import { 
   Search, 
   Bookmark, 
@@ -63,13 +64,21 @@ export default function DashboardSidebar() {
 
       {/* Bottom section */}
       <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-800/50 bg-slate-900/50">
-        <div className="flex items-center space-x-3 p-3 rounded-xl hover:bg-slate-800/50 transition-colors cursor-pointer">
-          <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl flex items-center justify-center">
-            <User className="w-5 h-5 text-slate-300" />
-          </div>
+        <div className="flex items-center space-x-3 p-3 rounded-xl hover:bg-slate-800/50 transition-colors">
+          <UserButton 
+            afterSignOutUrl="/"
+            appearance={{
+              elements: {
+                avatarBox: "w-10 h-10 rounded-xl",
+                userButtonPopoverCard: "bg-slate-800 border border-slate-700",
+                userButtonPopoverText: "text-slate-200",
+                userButtonPopoverActions: "text-slate-300"
+              }
+            }}
+          />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-white truncate">User Profile</p>
-            <p className="text-xs text-slate-400 truncate">Manage account</p>
+            <p className="text-xs text-slate-400 truncate">Click avatar to manage account</p>
           </div>
         </div>
       </div>

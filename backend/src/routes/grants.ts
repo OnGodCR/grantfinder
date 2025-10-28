@@ -125,19 +125,176 @@ function pct01(x: number): number {
 
 function computeScore(grant: any, profileTokens: string[]): number {
   const text = grantText(grant);
-  const recall = contentRecall(profileTokens, text);
-  let heur = 0;
-  const hasNonprofit = /\bnon[-\s]?profit\b/i.test(text);
-  const hasStartup = /\bstart[-\s]?up\b|\bstartup\b/i.test(text);
-  const hasResearch = /\bresearch\b/i.test(text);
-  const hints = [
-    profileTokens.includes("nonprofit") && hasNonprofit,
-    profileTokens.includes("startup") && hasStartup,
-    profileTokens.includes("research") && hasResearch,
-  ].filter(Boolean).length;
-  if (hints > 0) heur = Math.min(0.1 * hints, 0.3);
-  const score01 = 0.7 * recall + 0.3 * heur;
-  return pct01(score01);
+  
+  // Enhanced keyword matching with better scoring
+  const keywordScore = calculateEnhancedKeywordMatch(text, profileTokens);
+  
+  // Funding amount scoring (if available)
+  const fundingScore = calculateFundingScore(grant);
+  
+  // Deadline scoring
+  const deadlineScore = calculateDeadlineScore(grant);
+  
+  // Agency scoring
+  const agencyScore = calculateAgencyScore(grant, profileTokens);
+  
+  // Grant type scoring
+  const typeScore = calculateTypeScore(grant, profileTokens);
+  
+  // Location scoring
+  const locationScore = calculateLocationScore(grant, profileTokens);
+  
+  // Weighted final score (similar to frontend algorithm)
+  const weights = {
+    keywordMatch: 0.35,    // Increased weight for keywords
+    fundingMatch: 0.20,
+    deadlineMatch: 0.15,
+    agencyMatch: 0.15,
+    typeMatch: 0.10,
+    locationMatch: 0.05,
+  };
+  
+  const finalScore = 
+    keywordScore * weights.keywordMatch +
+    fundingScore * weights.fundingMatch +
+    deadlineScore * weights.deadlineMatch +
+    agencyScore * weights.agencyMatch +
+    typeScore * weights.typeMatch +
+    locationScore * weights.locationMatch;
+  
+  return Math.min(100, Math.max(0, Math.round(finalScore * 100)));
+}
+
+function calculateEnhancedKeywordMatch(text: string, profileTokens: string[]): number {
+  if (profileTokens.length === 0) return 0.3; // Default decent score
+  
+  let totalScore = 0;
+  let exactMatches = 0;
+  let partialMatches = 0;
+  
+  for (const token of profileTokens) {
+    if (token.length < 3) continue;
+    
+    // Exact word boundary match (higher weight)
+    const exactRegex = new RegExp(`\\b${escapeRegex(token)}\\b`, 'i');
+    if (exactRegex.test(text)) {
+      exactMatches++;
+      totalScore += 1.0;
+    }
+    // Partial match (lower weight)
+    else if (text.includes(token.toLowerCase())) {
+      partialMatches++;
+      totalScore += 0.5;
+    }
+  }
+  
+  // Calculate base score
+  const baseScore = totalScore / profileTokens.length;
+  
+  // Bonus for multiple exact matches
+  const exactBonus = Math.min(exactMatches * 0.1, 0.3);
+  
+  // Ensure minimum score for any matches
+  const finalScore = Math.max(baseScore + exactBonus, 0.2);
+  
+  return Math.min(finalScore, 1.0);
+}
+
+function calculateFundingScore(grant: any): number {
+  if (!grant.fundingMin && !grant.fundingMax) return 0.7; // Unknown funding - good score
+  
+  // Simple scoring based on funding amount ranges
+  const minFunding = grant.fundingMin || 0;
+  const maxFunding = grant.fundingMax || minFunding;
+  const avgFunding = (minFunding + maxFunding) / 2;
+  
+  // Score based on funding tiers
+  if (avgFunding >= 1000000) return 1.0;      // $1M+ - excellent
+  if (avgFunding >= 500000) return 0.9;       // $500K+ - very good
+  if (avgFunding >= 100000) return 0.8;       // $100K+ - good
+  if (avgFunding >= 50000) return 0.7;        // $50K+ - decent
+  if (avgFunding >= 10000) return 0.6;        // $10K+ - okay
+  return 0.5; // Lower amounts
+}
+
+function calculateDeadlineScore(grant: any): number {
+  if (!grant.deadline) return 0.7; // Unknown deadline - good score
+  
+  const deadline = new Date(grant.deadline);
+  const now = new Date();
+  const daysUntilDeadline = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysUntilDeadline < 0) return 0.1; // Deadline passed
+  
+  // Scoring based on time remaining
+  if (daysUntilDeadline >= 30 && daysUntilDeadline <= 90) return 1.0;  // Perfect timing
+  if (daysUntilDeadline >= 14 && daysUntilDeadline < 30) return 0.9;  // Good timing
+  if (daysUntilDeadline > 90) return 0.8;                              // Plenty of time
+  if (daysUntilDeadline >= 7) return 0.6;                               // Tight but manageable
+  return 0.3; // Very tight deadline
+}
+
+function calculateAgencyScore(grant: any, profileTokens: string[]): number {
+  const agencyName = grant.agency?.name?.toLowerCase() || '';
+  if (!agencyName) return 0.6; // Unknown agency - decent score
+  
+  // Check for exact agency matches in profile tokens
+  for (const token of profileTokens) {
+    if (agencyName.includes(token.toLowerCase()) || token.toLowerCase().includes(agencyName)) {
+      return 1.0;
+    }
+  }
+  
+  // Check for common prestigious agencies
+  const prestigiousAgencies = ['nsf', 'nih', 'darpa', 'doe', 'nasa', 'foundation', 'institute'];
+  for (const agency of prestigiousAgencies) {
+    if (agencyName.includes(agency)) {
+      return 0.8;
+    }
+  }
+  
+  return 0.6; // Default decent score
+}
+
+function calculateTypeScore(grant: any, profileTokens: string[]): number {
+  const grantType = `${grant.grantType || ''} ${grant.category || ''}`.toLowerCase();
+  if (!grantType.trim()) return 0.6; // Unknown type - decent score
+  
+  // Check for type matches in profile tokens
+  for (const token of profileTokens) {
+    if (grantType.includes(token.toLowerCase())) {
+      return 1.0;
+    }
+  }
+  
+  // Check for common grant types
+  const commonTypes = ['research', 'fellowship', 'grant', 'funding', 'scholarship', 'award', 'project'];
+  for (const type of commonTypes) {
+    if (grantType.includes(type)) {
+      return 0.7;
+    }
+  }
+  
+  return 0.5; // Default score
+}
+
+function calculateLocationScore(grant: any, profileTokens: string[]): number {
+  const grantLocation = grant.location?.toLowerCase() || '';
+  if (!grantLocation) return 0.7; // Unknown location - good score
+  
+  // Check for location matches in profile tokens
+  for (const token of profileTokens) {
+    if (grantLocation.includes(token.toLowerCase()) || token.toLowerCase().includes(grantLocation)) {
+      return 1.0;
+    }
+  }
+  
+  // Check for remote/international opportunities
+  if (grantLocation.includes('remote') || grantLocation.includes('international') || grantLocation.includes('global')) {
+    return 0.8;
+  }
+  
+  return 0.6; // Default decent score
 }
 
 /** =====================  INTERNAL: INSERT / UPSERT  ===================== */

@@ -48,5 +48,43 @@ export async function fetchGrants(q: string, token?: string): Promise<FetchResul
   }
 }
 
+// Enhanced grants search that includes match scoring
+export async function fetchGrantsWithMatching(q: string, token?: string, clerkId?: string): Promise<FetchResult> {
+  const url = `${BASE}/api/internal/grants/search`;
+  try {
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (token) headers.authorization = `Bearer ${token}`;
+
+    const body: any = { q };
+    if (clerkId) body.clerkId = clerkId;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      credentials: 'include',
+    });
+
+    const ctype = res.headers.get('content-type') || '';
+    let resBody: any = null;
+    let rawText: string | undefined;
+
+    if (ctype.includes('application/json')) {
+      resBody = await res.json().catch(() => null);
+    } else {
+      rawText = await res.text().catch(() => undefined);
+      try { resBody = rawText ? JSON.parse(rawText) : null; } catch {}
+    }
+
+    const out: FetchResult = { ok: res.ok, status: res.status, url, method: 'POST', body: resBody, rawText };
+    console.log('[grants] Enhanced search POST', out);
+    return out;
+  } catch (e: any) {
+    const out: FetchResult = { ok: false, status: 0, url, method: 'POST', body: null, error: e?.message || String(e) };
+    console.error('[grants] Enhanced search error', out);
+    return out;
+  }
+}
+
 // Back-compat alias so old imports keep working:
 export const fetchGrantsAuto = fetchGrants;

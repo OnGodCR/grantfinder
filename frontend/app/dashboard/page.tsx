@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@clerk/nextjs';
-import { fetchGrantsAuto } from '@/lib/grants';
+import { useAuth, useUser } from '@clerk/nextjs';
+import { fetchGrantsWithMatching, fetchGrantsAuto } from '@/lib/grants';
 import { calculateBatchMatchScores, getDefaultUserProfile, UserProfile } from '@/lib/matchScore';
+import { getMyPreferences, convertToMatchProfile } from '@/lib/me';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import TopNavbar from '@/components/TopNavbar';
 import ModernGrantCard from '@/components/ModernGrantCard';
@@ -26,26 +27,72 @@ interface Grant {
 
 export default function DashboardPage() {
   const { getToken, isSignedIn } = useAuth();
+  const { user } = useUser();
   const [grants, setGrants] = useState<Grant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [userProfile, setUserProfile] = useState<UserProfile>(getDefaultUserProfile());
+  const [hasUserProfile, setHasUserProfile] = useState(false);
 
+  // Load user profile on component mount
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!isSignedIn || !user?.id) return;
+
+      try {
+        const token = await getToken();
+        const profileResponse = await getMyPreferences(token || undefined, user.id);
+        
+        if (profileResponse.exists) {
+          const matchProfile = convertToMatchProfile(profileResponse.profile);
+          setUserProfile(matchProfile);
+          setHasUserProfile(true);
+          console.log('Loaded user profile:', matchProfile);
+        } else {
+          // User hasn't completed onboarding yet
+          setUserProfile(getDefaultUserProfile());
+          setHasUserProfile(false);
+          console.log('No user profile found, using default');
+        }
+      } catch (error) {
+        console.error('Failed to load user profile:', error);
+        setUserProfile(getDefaultUserProfile());
+        setHasUserProfile(false);
+      }
+    };
+
+    if (isSignedIn !== undefined) {
+      loadUserProfile();
+    }
+  }, [getToken, isSignedIn, user?.id]);
+
+  // Fetch grants with matching when profile is loaded or search changes
   useEffect(() => {
     const fetchGrants = async () => {
       try {
         setLoading(true);
         const token = isSignedIn ? await getToken() : undefined;
-        const response = await fetchGrantsAuto(searchQuery, token || undefined);
+        
+        // Use enhanced search with match scoring if user has profile
+        let response;
+        if (hasUserProfile && user?.id) {
+          response = await fetchGrantsWithMatching(searchQuery, token || undefined, user.id);
+        } else {
+          // Fallback to basic search for users without profiles
+          response = await fetchGrantsAuto(searchQuery, token || undefined);
+        }
         
         if (response.ok && response.body) {
-          const grantsData = response.body.items || response.body.grants || [];
+          let grantsData = response.body.items || response.body.grants || [];
           
-          // Calculate match scores for all grants
-          const grantsWithScores = calculateBatchMatchScores(grantsData, userProfile);
-          setGrants(grantsWithScores);
+          // If using basic search, calculate match scores on frontend
+          if (!hasUserProfile || !grantsData[0]?.matchScore) {
+            grantsData = calculateBatchMatchScores(grantsData, userProfile);
+          }
+          
+          setGrants(grantsData);
         } else {
           setError(response.error || 'Failed to fetch grants');
         }
@@ -56,10 +103,10 @@ export default function DashboardPage() {
       }
     };
 
-    if (isSignedIn !== undefined) {
+    if (isSignedIn !== undefined && userProfile) {
       fetchGrants();
     }
-  }, [getToken, isSignedIn, searchQuery]);
+  }, [getToken, isSignedIn, searchQuery, userProfile, hasUserProfile, user?.id]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -154,6 +201,30 @@ export default function DashboardPage() {
                 <div className="text-center py-16">
                   <p className="text-slate-300 text-xl font-medium">No grants found</p>
                   <p className="text-slate-500 mt-2">Try adjusting your search or filters</p>
+                </div>
+              )}
+              
+              {!loading && !hasUserProfile && isSignedIn && (
+                <div className="bg-teal-900/20 border border-teal-500/30 rounded-xl p-6 mb-8">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-shrink-0">
+                      <svg className="h-6 w-6 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-teal-300 text-lg font-medium">Complete your profile for better matches</h3>
+                      <p className="text-slate-300 mt-1">
+                        To get personalized grant recommendations, complete your research profile in onboarding.
+                      </p>
+                      <a 
+                        href="/onboarding" 
+                        className="inline-flex items-center mt-3 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Complete Profile
+                      </a>
+                    </div>
+                  </div>
                 </div>
               )}
               
