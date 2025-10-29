@@ -85,15 +85,15 @@ export default function ProfilePage() {
       
       // Fetch user preferences
       if (user?.id) {
-        const prefs = await getMyPreferences(user.id);
-        if (prefs.exists && prefs.data) {
+        const prefs = await getMyPreferences(undefined, user.id);
+        if (prefs.exists && prefs.profile) {
           setProfileData(prev => ({
             ...prev,
-            researchInterests: prefs.data.researchInterests || [],
+            researchInterests: [...prefs.profile.researchAreas, ...prefs.profile.keywords] || [],
             preferences: {
-              fundingRange: prefs.data.fundingRange || { min: 50000, max: 500000 },
-              deadlineBuffer: prefs.data.deadlineBuffer || 30,
-              matchThreshold: prefs.data.matchThreshold || 70,
+              fundingRange: { min: 50000, max: 500000 }, // Default - will add to database later
+              deadlineBuffer: prefs.profile.deadlineFirst ? 60 : 30,
+              matchThreshold: 70, // Default
             }
           }));
         }
