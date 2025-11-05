@@ -16,7 +16,7 @@ export default function Sidebar() {
   return (
     <aside className="w-64 shrink-0 border-r border-white/10 bg-white/5/0">
       <div className="px-5 py-4 text-sm uppercase tracking-wide text-body/70">
-        Grantalytic
+        Grantlytic
       </div>
       <nav className="px-3 pb-4">
         <ul className="space-y-1">

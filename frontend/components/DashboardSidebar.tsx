@@ -30,7 +30,7 @@ export default function DashboardSidebar() {
             <TrendingUp className="w-5 h-5 text-white" />
           </div>
           <div>
-            <span className="text-xl font-bold text-white">Grantalytic</span>
+            <span className="text-xl font-bold text-white">Grantlytic</span>
             <p className="text-xs text-slate-400 -mt-1">AI Grant Discovery</p>
           </div>
         </div>
