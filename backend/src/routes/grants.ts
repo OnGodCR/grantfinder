@@ -31,6 +31,103 @@ async function loadPrefsByClerkId(clerkId: string) {
   return { record: null, sourceModel: null };
 }
 
+/**
+ * Get or create User record from Clerk ID
+ */
+async function getOrCreateUser(clerkId: string): Promise<string | null> {
+  if (!clerkId) return null;
+  
+  try {
+    const user = await prisma.user.upsert({
+      where: { clerkId },
+      update: {},
+      create: {
+        clerkId,
+        role: 'RESEARCHER',
+      },
+    });
+    return user.id;
+  } catch (error) {
+    console.error(`Error getting/creating user for clerkId ${clerkId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Save or update match scores for a user
+ */
+async function saveMatchScores(userId: string, grantScores: Array<{ grantId: string; score: number }>): Promise<void> {
+  if (!userId || grantScores.length === 0) return;
+
+  try {
+    // Use Promise.allSettled to handle errors gracefully
+    await Promise.allSettled(
+      grantScores.map(async ({ grantId, score }) => {
+        // Check if match already exists
+        const existing = await prisma.match.findFirst({
+          where: {
+            userId,
+            grantId,
+          },
+        });
+
+        if (existing) {
+          // Update existing match
+          await prisma.match.update({
+            where: { id: existing.id },
+            data: {
+              score,
+              createdAt: new Date(), // Update timestamp
+            },
+          });
+        } else {
+          // Create new match
+          await prisma.match.create({
+            data: {
+              userId,
+              grantId,
+              score,
+            },
+          });
+        }
+      })
+    );
+  } catch (error) {
+    console.error(`Error saving match scores for userId ${userId}:`, error);
+    // Don't throw - we want to continue even if saving fails
+  }
+}
+
+/**
+ * Get saved match scores for a user
+ */
+async function getSavedMatchScores(userId: string, grantIds: string[]): Promise<Map<string, number>> {
+  if (!userId || grantIds.length === 0) return new Map();
+
+  try {
+    const matches = await prisma.match.findMany({
+      where: {
+        userId,
+        grantId: { in: grantIds },
+      },
+      select: {
+        grantId: true,
+        score: true,
+      },
+    });
+
+    const scoreMap = new Map<string, number>();
+    matches.forEach((match) => {
+      scoreMap.set(match.grantId, match.score);
+    });
+
+    return scoreMap;
+  } catch (error) {
+    console.error(`Error getting saved match scores for userId ${userId}:`, error);
+    return new Map();
+  }
+}
+
 /** ---------- token helpers ---------- */
 function smartSplit(input: any): string[] {
   if (!input) return [];
@@ -401,14 +498,19 @@ router.post("/grants", requireAuthOrSkip, async (req: Request, res: Response) =>
   }
 });
 
-/** =====================  POWER SEARCH (kept)  ===================== */
+/** =====================  POWER SEARCH WITH MATCH SCORING  ===================== */
 router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, res: Response) => {
   const debug = process.env.DEBUG_SCORES === "1";
   try {
     const q = (req.body?.q ?? "").toString().trim();
     const limit = Math.min(Math.max(Number(req.body?.limit ?? 24), 1), 100);
     const offset = Math.max(Number(req.body?.offset ?? 0), 0);
-    const clerkId = (req.body?.clerkId ?? "").toString().trim() || null;
+    
+    // Get clerkId from authenticated request (preferred) or fallback to body
+    let clerkId: string | null = req.auth?.userId || null;
+    if (!clerkId) {
+      clerkId = (req.body?.clerkId ?? "").toString().trim() || null;
+    }
 
     const where: Prisma.GrantWhereInput = q
       ? {
@@ -456,8 +558,26 @@ router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, r
       prisma.grant.count({ where }),
     ]);
 
+    // Get or create user record if authenticated
+    let userId: string | null = null;
+    if (clerkId) {
+      userId = await getOrCreateUser(clerkId);
+      if (userId && debug) {
+        console.log(`[Match Scores] User ${clerkId} -> userId ${userId}`);
+      }
+    }
+
+    // Compute scores and save them if user is authenticated
+    const grantScores: Array<{ grantId: string; score: number }> = [];
+    
     const items = rows.map((g) => {
       const score = computeScore(g, profileTokens);
+      
+      // Collect scores for saving
+      if (userId) {
+        grantScores.push({ grantId: g.id, score });
+      }
+      
       const base = {
         id: g.id,
         title: g.title,
@@ -474,10 +594,100 @@ router.post("/internal/grants/search", requireAuthOrSkip, async (req: Request, r
       return { ...base, __debug: { textSample: grantText(g).slice(0, 160) } };
     });
 
-    return res.json({ ok: true, query: q, items, grants: items, count, ...(debug ? { profileTokens, prefsModel } : {}) });
+    // Save match scores asynchronously (don't block response)
+    if (userId && grantScores.length > 0) {
+      saveMatchScores(userId, grantScores).catch((error) => {
+        console.error("[Match Scores] Failed to save scores:", error);
+      });
+    }
+
+    return res.json({ 
+      ok: true, 
+      query: q, 
+      items, 
+      grants: items, 
+      count,
+      userId: userId || null, // Include userId in response for debugging
+      ...(debug ? { profileTokens, prefsModel, clerkId } : {}) 
+    });
   } catch (err: any) {
     console.error("grants route error:", err?.message || err);
     return res.status(500).json({ ok: false, error: "server error in /internal/grants/search" });
+  }
+});
+
+/** =====================  GET SAVED MATCH SCORES  ===================== */
+router.get("/grants/match-scores", requireAuthOrSkip, async (req: Request, res: Response) => {
+  try {
+    // Get clerkId from authenticated request (preferred) or query parameter
+    let clerkId: string | null = req.auth?.userId || null;
+    if (!clerkId) {
+      clerkId = (req.query.clerkId as string)?.trim() || null;
+    }
+
+    if (!clerkId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    // Get user ID from clerkId
+    const userId = await getOrCreateUser(clerkId);
+    if (!userId) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Get grant IDs from query (optional - if not provided, return all user's scores)
+    const grantIds = req.query.grantIds 
+      ? (Array.isArray(req.query.grantIds) ? req.query.grantIds : [req.query.grantIds]).map(String)
+      : null;
+
+    let matches;
+    if (grantIds && grantIds.length > 0) {
+      // Get specific grants' scores
+      matches = await prisma.match.findMany({
+        where: {
+          userId,
+          grantId: { in: grantIds },
+        },
+        include: {
+          grant: {
+            select: {
+              id: true,
+              title: true,
+              summary: true,
+            },
+          },
+        },
+        orderBy: { score: "desc" },
+      });
+    } else {
+      // Get all user's match scores
+      matches = await prisma.match.findMany({
+        where: { userId },
+        include: {
+          grant: {
+            select: {
+              id: true,
+              title: true,
+              summary: true,
+            },
+          },
+        },
+        orderBy: { score: "desc" },
+        take: 100, // Limit to 100 most recent
+      });
+    }
+
+    const scores = matches.map((match) => ({
+      grantId: match.grantId,
+      score: match.score,
+      createdAt: match.createdAt,
+      grant: match.grant,
+    }));
+
+    return res.json({ ok: true, scores, count: scores.length });
+  } catch (err: any) {
+    console.error("Error fetching match scores:", err?.message || err);
+    return res.status(500).json({ ok: false, error: "Failed to fetch match scores" });
   }
 });
 

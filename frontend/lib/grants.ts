@@ -86,5 +86,37 @@ export async function fetchGrantsWithMatching(q: string, token?: string, clerkId
   }
 }
 
+/**
+ * Get saved match scores for the authenticated user
+ */
+export async function getSavedMatchScores(token?: string, grantIds?: string[]): Promise<{ ok: boolean; scores: Array<{ grantId: string; score: number; createdAt: string }>; count: number }> {
+  let url = `${BASE}/api/grants/match-scores`;
+  if (grantIds && grantIds.length > 0) {
+    const params = grantIds.map(id => `grantIds=${encodeURIComponent(id)}`).join('&');
+    url += `?${params}`;
+  }
+  
+  try {
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (token) headers.authorization = `Bearer ${token}`;
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers,
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch match scores: ${res.status}`);
+    }
+
+    const data = await res.json();
+    return data;
+  } catch (e: any) {
+    console.error('[grants] Error fetching match scores:', e);
+    return { ok: false, scores: [], count: 0 };
+  }
+}
+
 // Back-compat alias so old imports keep working:
 export const fetchGrantsAuto = fetchGrants;
