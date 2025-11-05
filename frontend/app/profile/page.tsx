@@ -166,44 +166,113 @@ export default function ProfilePage() {
         
         <div className="p-6 bg-slate-900">
           <div className="max-w-4xl mx-auto">
-            {/* Header */}
+            {/* Header with Sign-In Status */}
             <div className="mb-8">
-              <h1 className="text-4xl font-bold text-white mb-2">Profile Settings</h1>
-              <p className="text-slate-400 text-lg">Manage your account and preferences</p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h1 className="text-4xl font-bold text-white mb-2">Profile Settings</h1>
+                  <p className="text-slate-400 text-lg">Manage your account and preferences</p>
+                </div>
+                {/* Sign-In Status Badge */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/50 rounded-lg">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-green-300 font-medium text-sm">Signed In</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Account Information Card */}
+              {isSignedIn && user && (
+                <div className="bg-gradient-to-r from-teal-500/10 to-blue-500/10 border border-teal-500/30 rounded-xl p-6 mb-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <User className="w-8 h-8 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white mb-1">
+                          {user.firstName || 'User'} {user.lastName || ''}
+                        </h3>
+                        <p className="text-slate-300 text-sm mb-2">{user.emailAddresses?.[0]?.emailAddress}</p>
+                        <div className="flex items-center gap-4 text-xs text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            {user.emailAddresses?.[0]?.emailAddress ? 'Verified' : 'Unverified'}
+                          </span>
+                          {user.createdAt && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              Member since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-400 mb-1">Account Status</div>
+                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/20 border border-green-500/50 rounded-lg">
+                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                        <span className="text-green-300 font-medium text-sm">Active</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               {/* Sidebar */}
               <div className="lg:col-span-1">
                 <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/30">
-                  <div className="flex items-center mb-6">
-                    <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center mr-4">
-                      <User className="w-8 h-8 text-white" />
+                  {/* User Info Summary */}
+                  <div className="mb-6 pb-6 border-b border-slate-700/30">
+                    <div className="flex items-center mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                        <User className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-semibold text-white truncate">
+                          {user?.firstName || 'User'} {user?.lastName || ''}
+                        </h3>
+                        <p className="text-slate-400 text-xs truncate">{user?.emailAddresses?.[0]?.emailAddress}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">
-                        {user?.firstName || 'User'} {user?.lastName || ''}
-                      </h3>
-                      <p className="text-slate-400 text-sm">{user?.emailAddresses?.[0]?.emailAddress}</p>
+                    {/* Quick Status */}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/30 rounded-lg">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="text-green-300 text-xs font-medium">Currently Signed In</span>
                     </div>
                   </div>
                   
-                  <nav className="space-y-2">
-                    {tabs.map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          activeTab === tab.id
-                            ? 'bg-teal-500 text-white'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                        }`}
-                      >
-                        <tab.icon className="w-5 h-5 mr-3" />
-                        {tab.label}
-                      </button>
-                    ))}
-                  </nav>
+                  {/* Navigation */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Navigation</h4>
+                    <nav className="space-y-1">
+                      {tabs.map((tab) => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                            activeTab === tab.id
+                              ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20'
+                              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                          }`}
+                        >
+                          <tab.icon className={`w-5 h-5 mr-3 ${activeTab === tab.id ? 'text-white' : ''}`} />
+                          {tab.label}
+                        </button>
+                      ))}
+                    </nav>
+                  </div>
+                  
+                  {/* Current Page Indicator */}
+                  <div className="mt-6 pt-6 border-t border-slate-700/30">
+                    <div className="text-xs text-slate-500 mb-1">Current Page</div>
+                    <div className="text-sm font-medium text-teal-400">
+                      {tabs.find(t => t.id === activeTab)?.label || 'Overview'}
+                    </div>
+                  </div>
                 </div>
               </div>
 
