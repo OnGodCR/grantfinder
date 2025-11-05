@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowRight, Search, Bookmark, TrendingUp, Award, Clock, Users } from 'lucide-react';
 import { ShaderAnimation } from '@/components/ui/shader-animation';
 import { BackgroundPaths } from '@/components/ui/background-paths';
+import { GlowingEffectDemo } from '@/components/ui/glowing-effect-demo';
 
 const grants = [
   { 
@@ -136,39 +137,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="px-6 py-20 bg-slate-800/50">
+      {/* Features Section with Glowing Effect */}
+      <section className="px-6 py-20 bg-white dark:bg-slate-950">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">Why Choose Grantalytic?</h2>
-            <p className="text-xl text-slate-300">Powerful features designed for research institutions</p>
+            <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Why Choose Grantalytic?</h2>
+            <p className="text-xl text-slate-600 dark:text-slate-300">Powerful features designed for research institutions</p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center p-6">
-              <div className="w-16 h-16 bg-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Search className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Intelligent Search</h3>
-              <p className="text-slate-300">AI-powered matching finds the most relevant grants for your research focus and institution profile.</p>
-            </div>
-            
-            <div className="text-center p-6">
-              <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Real-time Updates</h3>
-              <p className="text-slate-300">Stay ahead with live updates from 500+ funding sources including NSF, NIH, and international agencies.</p>
-            </div>
-            
-            <div className="text-center p-6">
-              <div className="w-16 h-16 bg-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Award className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Success Tracking</h3>
-              <p className="text-slate-300">Monitor application progress, track success rates, and optimize your grant strategy over time.</p>
-            </div>
-          </div>
+          <GlowingEffectDemo />
         </div>
       </section>
 
