@@ -89,7 +89,10 @@ export default function ProfilePage() {
         if (prefs.exists && prefs.profile) {
           setProfileData(prev => ({
             ...prev,
-            researchInterests: [...prefs.profile.researchAreas, ...prefs.profile.keywords] || [],
+            researchInterests: [
+              ...(prefs.profile.researchAreas || []),
+              ...(prefs.profile.keywords || [])
+            ],
             preferences: {
               fundingRange: { min: 50000, max: 500000 }, // Default - will add to database later
               deadlineBuffer: prefs.profile.deadlineFirst ? 60 : 30,
