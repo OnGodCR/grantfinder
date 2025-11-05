@@ -42,28 +42,28 @@ const grants = [
 export default function Home() {
   return (
     <div className="min-h-screen">
-      {/* Background Paths Component - First UI Element */}
-      <BackgroundPaths title="Grantalytic" />
-
-      {/* Navigation - Fixed above other content */}
-      <nav className="relative z-50 px-6 py-4 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
+      {/* Navigation - Positioned at top, overlaying BackgroundPaths */}
+      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-black/80 backdrop-blur-sm border-b border-slate-800/50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">Grantalytic</span>
+            <span className="text-2xl font-bold text-white">Grantalytic</span>
           </div>
           <div className="hidden md:flex items-center space-x-8">
-            <a href="/features" className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">Features</a>
-            <a href="/about" className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">About Us</a>
-            <a href="/contact" className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">Contact Us</a>
+            <a href="/features" className="text-slate-300 hover:text-white transition-colors">Features</a>
+            <a href="/about" className="text-slate-300 hover:text-white transition-colors">About Us</a>
+            <a href="/contact" className="text-slate-300 hover:text-white transition-colors">Contact Us</a>
             <Link href="/discover" className="bg-teal-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-teal-600 transition-colors">
               Log in
             </Link>
           </div>
         </div>
       </nav>
+
+      {/* Background Paths Component - First UI Element with black background */}
+      <BackgroundPaths title="Grantalytic" />
 
       {/* Hero Section with Shader Animation - Moved Below BackgroundPaths */}
       <section className="relative px-6 py-20 overflow-hidden min-h-[600px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
