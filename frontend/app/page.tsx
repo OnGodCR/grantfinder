@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight, Search, Bookmark, TrendingUp, Award, Clock, Users } from 'lucide-react';
+import { ShaderAnimation } from '@/components/ui/shader-animation';
 
 const grants = [
   { 
@@ -59,9 +60,17 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative px-6 py-20">
-        <div className="max-w-7xl mx-auto">
+      {/* Hero Section with Shader Animation */}
+      <section className="relative px-6 py-20 overflow-hidden min-h-[600px]">
+        {/* Shader Animation Background */}
+        <div className="absolute inset-0 z-0">
+          <div className="relative w-full h-full min-h-[600px]">
+            <ShaderAnimation />
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-900/80" />
+          </div>
+        </div>
+        
+        <div className="relative z-10 max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left: Hero Content */}
             <div className="space-y-8">
