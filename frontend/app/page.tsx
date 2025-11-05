@@ -43,13 +43,13 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Navigation - Positioned at top, overlaying BackgroundPaths */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-black/80 backdrop-blur-sm border-b border-slate-800/50">
+      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-slate-900/80 backdrop-blur-sm border-b border-slate-800/50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-white">Grantalytic</span>
+            <span className="text-2xl font-bold text-white">Grantlytic</span>
           </div>
           <div className="hidden md:flex items-center space-x-8">
             <a href="/features" className="text-slate-300 hover:text-white transition-colors">Features</a>
@@ -62,8 +62,8 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Background Paths Component - First UI Element with black background */}
-      <BackgroundPaths title="Grantalytic" />
+      {/* Background Paths Component - First UI Element with slate background */}
+      <BackgroundPaths title="Grantlytic" />
 
       {/* Hero Section with Shader Animation - Moved Below BackgroundPaths */}
       <section className="relative px-6 py-20 overflow-hidden min-h-[600px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -101,7 +101,7 @@ export default function Home() {
                 </Link>
             </div>
               <p className="text-sm text-slate-400">
-                Grantalytic AI aggregates funding opportunities from trusted sources including NSF, NIH, Horizon Europe, and more.
+                Grantlytic AI aggregates funding opportunities from trusted sources including NSF, NIH, Horizon Europe, and more.
             </p>
           </div>
 
@@ -141,7 +141,7 @@ export default function Home() {
       <section className="px-6 py-20 bg-white dark:bg-slate-950">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Why Choose Grantalytic?</h2>
+            <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Why Choose Grantlytic?</h2>
             <p className="text-xl text-slate-600 dark:text-slate-300">Powerful features designed for research institutions</p>
           </div>
           
@@ -177,7 +177,7 @@ export default function Home() {
       <section className="px-6 py-20 bg-gradient-to-r from-teal-500 to-blue-600">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-white mb-4">Ready to Transform Your Grant Discovery?</h2>
-          <p className="text-xl text-teal-100 mb-8">Join hundreds of universities already using Grantalytic to find and win more grants.</p>
+          <p className="text-xl text-teal-100 mb-8">Join hundreds of universities already using Grantlytic to find and win more grants.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
               href="/discover"
@@ -205,7 +205,7 @@ export default function Home() {
                 <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center">
                   <TrendingUp className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-bold text-white">Grantalytic</span>
+                <span className="text-xl font-bold text-white">Grantlytic</span>
               </div>
               <p className="text-slate-400 text-sm">
                 AI-powered grant discovery platform for universities and research institutions.
@@ -237,7 +237,7 @@ export default function Home() {
             </div>
           </div>
           <div className="border-t border-slate-800 mt-8 pt-8 text-center text-sm text-slate-400">
-            <p>&copy; 2024 Grantalytic. All rights reserved.</p>
+            <p>&copy; 2024 Grantlytic. All rights reserved.</p>
     </div>
     </div>
       </footer>
