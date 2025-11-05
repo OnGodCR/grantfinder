@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, Search, Bookmark, TrendingUp, Award, Clock, Users } from 'lucide-react';
 import { ShaderAnimation } from '@/components/ui/shader-animation';
+import { BackgroundPaths } from '@/components/ui/background-paths';
 
 const grants = [
   { 
@@ -39,20 +40,23 @@ const grants = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Navigation */}
-      <nav className="relative z-10 px-6 py-4">
+    <div className="min-h-screen">
+      {/* Background Paths Component - First UI Element */}
+      <BackgroundPaths title="Grantalytic" />
+
+      {/* Navigation - Fixed above other content */}
+      <nav className="relative z-50 px-6 py-4 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-white">Grantalytic</span>
+            <span className="text-2xl font-bold text-slate-900 dark:text-white">Grantalytic</span>
           </div>
           <div className="hidden md:flex items-center space-x-8">
-            <a href="/features" className="text-slate-300 hover:text-white transition-colors">Features</a>
-            <a href="/about" className="text-slate-300 hover:text-white transition-colors">About Us</a>
-            <a href="/contact" className="text-slate-300 hover:text-white transition-colors">Contact Us</a>
+            <a href="/features" className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">Features</a>
+            <a href="/about" className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">About Us</a>
+            <a href="/contact" className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">Contact Us</a>
             <Link href="/discover" className="bg-teal-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-teal-600 transition-colors">
               Log in
             </Link>
@@ -60,8 +64,8 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero Section with Shader Animation */}
-      <section className="relative px-6 py-20 overflow-hidden min-h-[600px]">
+      {/* Hero Section with Shader Animation - Moved Below BackgroundPaths */}
+      <section className="relative px-6 py-20 overflow-hidden min-h-[600px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         {/* Shader Animation Background */}
         <div className="absolute inset-0 z-0">
           <div className="relative w-full h-full min-h-[600px]">
